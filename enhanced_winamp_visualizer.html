@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Winamp-Style Spectrum</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Back to 2D Button -->
+  <button id="back-to-2d" class="back-to-2d">
+    ← Back to 2D
+  </button>
+
+  <header>
+    <h1>Winamp Spectrum</h1>
+    <label class="file btn">
+      Load audio
+      <input id="file" type="file" accept="audio/*" />
+    </label>
+    <button id="url" class="btn">Load URL</button>
+    <button id="mic" class="btn">Use mic</button>
+    <button id="play" class="btn" disabled>Play</button>
+    <button id="pause" class="btn" disabled>Pause</button>
+    <div class="toggles">
+      <label>Style
+        <select id="style">
+          <option value="bars" selected>2D Bars</option>
+          <option value="spikes">2D Spikes</option>
+          <option value="circles">2D Circles</option>
+          <option value="waveform">2D Waveform</option>
+          <option value="radial">2D Radial</option>
+          <option value="particles">2D Particles</option>
+          <option value="3d-bars">3D Bars</option>
+          <option value="3d-sphere">3D Sphere</option>
+          <option value="3d-tunnel">3D Tunnel</option>
+          <option value="3d-waves">3D Waves</option>
+          <option value="3d-cube">3D Cube Matrix</option>
+          <option value="3d-spiral">3D Spiral</option>
+          <option value="3d-galaxy">3D Galaxy</option>
+          <option value="3d-dna">3D DNA Helix</option>
+        </select>
+      </label>
+      <label id="bar-style-container" style="display: none;">Bar Style
+        <select id="bar-style">
+          <option value="led" selected>LED Style</option>
+          <option value="gradient">Linear Gradient</option>
+        </select>
+      </label>
+      <label>Theme
+        <select id="theme">
+          <option value="classic" selected>Classic</option>
+          <option value="neon">Neon Glow</option>
+          <option value="ocean">Ocean Depths</option>
+          <option value="fire">Fire Storm</option>
+          <option value="matrix">Matrix Code</option>
+          <option value="synthwave">Synthwave</option>
+          <option value="aurora">Aurora</option>
+          <option value="plasma">Plasma</option>
+          <option value="rainbow">Rainbow</option>
+          <option value="midnight">Midnight</option>
+          <option value="custom">Custom Theme</option>
+        </select>
+      </label>
+      <button id="create-theme" class="btn" title="Create Custom Theme">Create Theme</button>
+      <label><input id="effects" type="checkbox" checked> Effects</label>
+      <label><input id="grid" type="checkbox" checked> Grid</label>
+      <label><input id="bars" type="checkbox" checked> Bars</label>
+      <label><input id="peaks" type="checkbox" checked> Peaks</label>
+      <label><input id="shake" type="checkbox"> Shake Mode</label>
+      <label><input id="flash" type="checkbox"> Beat Flash</label>
+      <label><input id="zoom" type="checkbox"> Beat Zoom</label>
+      <label><input id="particles-effect" type="checkbox"> Particle Burst</label>
+      <label><input id="particle-trails" type="checkbox"> Particle Trails</label>
+      <label><input id="particle-fountain" type="checkbox"> Particle Fountain</label>
+      <label><input id="camera-movement" type="checkbox"> 3D Camera Dance</label>
+      <label>Camera Pattern
+        <select id="camera-pattern">
+          <option value="random" selected>Random</option>
+          <option value="orbital">Orbital</option>
+          <option value="spiral">Spiral</option>
+          <option value="figure8">Figure 8</option>
+          <option value="pendulum">Pendulum</option>
+        </select>
+      </label>
+      <label title="Peak hold time">
+        Peak
+        <input id="peak-seconds" type="range" min="-1" max="15" step="0.1" value="2.5" style="vertical-align: middle; width: 120px;">
+        <span id="peak-seconds-val">2.5s</span>
+      </label>
+      <label title="Beat sensitivity">
+        Beat Sens
+        <input id="beat-sensitivity" type="range" min="0.8" max="2.0" step="0.1" value="1.2" style="vertical-align: middle; width: 120px;">
+        <span id="beat-sensitivity-val">1.2</span>
+      </label>
+      <button id="reset-eq" class="btn" title="Reset EQ to 0 dB">Reset EQ</button>
+    </div>
+  </header>
+  <section class="playlist" aria-label="Playlist">
+    <div class="playlist-list" id="playlist"></div>
+  </section>
+  <main>
+    <div id="bg-pattern" class="bg-pattern"></div>
+    <canvas id="viz" width="1000" height="420" aria-label="Winamp-style spectrum"></canvas>
+    <div id="three-container"></div>
+  </main>
+  <section class="eq" aria-label="Equalizer">
+    <div class="eq-controls">
+      <strong>Equalizer</strong>
+      <label><input id="eq-enable" type="checkbox" checked> Enable</label>
+    </div>
+    <div class="eq-sliders" id="eq-sliders"></div>
+  </section>
+  <footer>
+    20-band log spectrum with LED segments, peak-hold, classic color ramp. Now with 3D visualizations and beat detection!
+  </footer>
+
+  <!-- Theme Creator Modal -->
+  <div id="theme-modal" class="theme-modal">
+    <div class="theme-modal-content">
+      <div class="theme-modal-header">
+        <h2>Create Custom Theme</h2>
+        <button id="close-theme-modal" class="close-btn">&times;</button>
+      </div>
+      <div class="theme-modal-body">
+        <div class="theme-section">
+          <h3>Theme Name</h3>
+          <input type="text" id="theme-name" placeholder="Enter theme name" maxlength="20">
+        </div>
+        
+        <div class="theme-section">
+          <h3>Colors</h3>
+          <div class="color-grid">
+            <label>Primary Color: <input type="color" id="primary-color" value="#9eea6a"></label>
+            <label>Background: <input type="color" id="bg-color" value="#000000"></label>
+            <label>Border: <input type="color" id="border-color" value="#111111"></label>
+            <label>UI Background: <input type="color" id="ui-bg-color" value="#0a0a0a"></label>
+          </div>
+        </div>
+        
+        <div class="theme-section">
+          <h3>Visualization Colors</h3>
+          <div class="color-grid">
+            <label>Low Freq: <input type="color" id="low-freq-color" value="#00ff00"></label>
+            <label>Mid Freq: <input type="color" id="mid-freq-color" value="#ffff00"></label>
+            <label>High Freq: <input type="color" id="high-freq-color" value="#ff0000"></label>
+          </div>
+        </div>
+        
+        <div class="theme-section">
+          <h3>Effects</h3>
+          <div class="effect-grid">
+            <label><input type="checkbox" id="glow-effect"> Glow Effect</label>
+            <label><input type="checkbox" id="blur-effect"> Blur Effect</label>
+            <label><input type="checkbox" id="neon-effect"> Neon Effect</label>
+          </div>
+        </div>
+        
+        <div class="theme-preview">
+          <h3>Preview</h3>
+          <div id="theme-preview-box" class="preview-box">
+            <div class="preview-bar" style="height: 60%; background: #00ff00;"></div>
+            <div class="preview-bar" style="height: 80%; background: #ffff00;"></div>
+            <div class="preview-bar" style="height: 40%; background: #ff0000;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="theme-modal-footer">
+        <button id="export-theme" class="btn">Export Theme</button>
+        <button id="import-theme" class="btn">Import Theme</button>
+        <button id="save-theme" class="btn">Save Theme</button>
+        <button id="cancel-theme" class="btn">Cancel</button>
+      </div>
+      
+      <!-- Hidden file input for theme import -->
+      <input type="file" id="theme-file-input" accept=".json" style="display: none;">
+    </div>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
