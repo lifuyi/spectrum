@@ -1288,13 +1288,10 @@
     // Try to get the theme from the main themes object first
     let theme = themes[themeName];
     
-    // If the theme doesn't exist or if we're switching to a built-in theme
-    // that might have been overridden by a custom theme, try to get it from builtInThemes
-    if (!theme || (builtInThemes.hasOwnProperty(themeName) && customThemes.hasOwnProperty(themeName))) {
-      // If it's a built-in theme that was overridden, use the built-in version
-      if (builtInThemes.hasOwnProperty(themeName)) {
-        theme = builtInThemes[themeName];
-      }
+    // If we're switching to a built-in theme that might have been overridden 
+    // by a custom theme, use the built-in version instead
+    if (builtInThemes.hasOwnProperty(themeName)) {
+      theme = builtInThemes[themeName];
     }
     
     if (!theme) return;
@@ -1471,7 +1468,8 @@
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
 
-    ctx.fillStyle = BG_COLOR;
+    // Use the current theme's background color instead of hardcoded BG_COLOR
+    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
 
     drawGrid(levels.length);
@@ -1861,7 +1859,8 @@
     const centerY = h / 2;
     const maxRadius = Math.min(w, h) / 3;
     
-    ctx.fillStyle = BG_COLOR;
+    // Use the current theme's background color instead of hardcoded BG_COLOR
+    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
     
     drawGrid(levels.length);
@@ -1894,7 +1893,8 @@
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     
-    ctx.fillStyle = BG_COLOR;
+    // Use the current theme's background color instead of hardcoded BG_COLOR
+    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
     
     // Add to history
@@ -1945,7 +1945,8 @@
     const centerY = h / 2;
     const maxRadius = Math.min(w, h) / 2 - 20;
     
-    ctx.fillStyle = BG_COLOR;
+    // Use the current theme's background color instead of hardcoded BG_COLOR
+    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
     
     drawGrid(levels.length);
@@ -1992,7 +1993,8 @@
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     
-    ctx.fillStyle = BG_COLOR;
+    // Use the current theme's background color instead of hardcoded BG_COLOR
+    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
     
     // Update particle system
@@ -2464,7 +2466,11 @@
     
     // Save to custom themes and add to dropdown
     customThemes[themeName] = customTheme;
-    themes[themeName] = customTheme;
+    
+    // Only add to themes object if it's not a built-in theme
+    if (!builtInThemes.hasOwnProperty(themeName)) {
+      themes[themeName] = customTheme;
+    }
     
     // Add to theme selector
     const themeSelect = document.getElementById('theme');
@@ -2541,11 +2547,16 @@
       if (saved) {
         const loaded = JSON.parse(saved);
         Object.assign(customThemes, loaded);
-        Object.assign(themes, loaded);
         
-        // Add to theme selector
-        const themeSelect = document.getElementById('theme');
+        // Only add custom themes to the themes object, don't overwrite built-in themes
         Object.keys(loaded).forEach(themeName => {
+          // Only add custom themes that don't conflict with built-in theme names
+          if (!builtInThemes.hasOwnProperty(themeName)) {
+            themes[themeName] = loaded[themeName];
+          }
+          
+          // Add to theme selector
+          const themeSelect = document.getElementById('theme');
           let option = themeSelect.querySelector(`option[value="${themeName}"]`);
           if (!option) {
             option = document.createElement('option');
@@ -2718,7 +2729,16 @@
     // If switching from a custom theme to a built-in theme, we need to make sure
     // the built-in theme is not overridden by a custom theme with the same name
     applyThemePreset(currentTheme);
-    handleToggleRedraw();
+    
+    // Force a redraw to show the new theme
+    immediateRedraw();
+    
+    // If we were rendering, we need to restart the render loop
+    // because immediateRedraw might have interfered with the animation frame
+    if (isRendering()) {
+      stopRendering();
+      render();
+    }
   });
 
   barStyleSel.addEventListener('change', () => {
@@ -2728,7 +2748,16 @@
 
   effectsChk.addEventListener('change', () => {
     applyThemePreset(currentTheme);
-    handleToggleRedraw();
+    
+    // Force a redraw to show the new theme
+    immediateRedraw();
+    
+    // If we were rendering, we need to restart the render loop
+    // because immediateRedraw might have interfered with the animation frame
+    if (isRendering()) {
+      stopRendering();
+      render();
+    }
   });
 
   window.addEventListener('resize', () => {
@@ -2820,10 +2849,39 @@
   if (barStyleContainer) {
     barStyleContainer.style.display = vizStyle === 'bars' ? 'inline-flex' : 'none';
   }
+  // Remove unwanted themes from localStorage
+  function removeUnwantedThemes() {
+    try {
+      const saved = localStorage.getItem('customThemes');
+      if (saved) {
+        const loaded = JSON.parse(saved);
+        
+        // Remove themes named "123" or "Custom Theme"
+        let removed = false;
+        if (loaded['123']) {
+          delete loaded['123'];
+          removed = true;
+        }
+        if (loaded['Custom Theme']) {
+          delete loaded['Custom Theme'];
+          removed = true;
+        }
+        
+        // Save the updated themes back to localStorage if we removed any
+        if (removed) {
+          localStorage.setItem('customThemes', JSON.stringify(loaded));
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to remove unwanted themes:', e);
+    }
+  }
+  
   resetBarLevels();
   drawSpectrum(new Float32Array(NUM_BANDS));
   updatePeakDecayFromSeconds();
   updateBeatSensitivity();
+  removeUnwantedThemes(); // Remove unwanted themes before loading
   loadCustomThemes(); // Load saved custom themes
   applyThemePreset(currentTheme);
   
