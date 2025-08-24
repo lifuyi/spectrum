@@ -1365,7 +1365,7 @@
     if (!gridChk.checked) return;
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
-    const labelHeight = (vizStyle === 'bars') ? 15 : 0;
+    const labelHeight = (vizStyle === 'bars' || vizStyle === 'mountain') ? 15 : 0;
     const drawHeight = h - labelHeight;
     ctx.save();
     const minor = '#222';
@@ -1392,6 +1392,17 @@
         ctx.lineTo(x - 0.5, drawHeight);
         ctx.stroke();
         x += barWidth + BAR_GAP;
+      }
+    } else if (vizStyle === 'mountain') {
+      const step = w / (bandCount - 1);
+      for (let i = 0; i < bandCount; i++) {
+        const x = i * step;
+        ctx.strokeStyle = i % 5 === 0 ? major : minor;
+        ctx.lineWidth = i % 5 === 0 ? 1.25 : 1;
+        ctx.beginPath();
+        ctx.moveTo(x - 0.5, 0);
+        ctx.lineTo(x - 0.5, drawHeight);
+        ctx.stroke();
       }
     }
     ctx.restore();
@@ -1508,10 +1519,256 @@
       }
     };
 
+    const drawMountains = (yBase) => {
+      const count = levels.length;
+      const labelHeight = 15;
+      const drawHeight = h - labelHeight;
+      const step = w / (count - 1);
+      const labels = getBandLabels(count);
+
+      // Create a path for the mountain silhouette with sharper peaks
+      ctx.beginPath();
+      
+      // Start from the left bottom
+      ctx.moveTo(0, h - labelHeight);
+      
+      // Draw the mountain peaks with sharper points
+      for (let i = 0; i < count; i++) {
+        const inst = levels[i];
+        const disp = vizStyle === 'bars' ? (barLevels[i] || 0) : inst;
+        const height = disp * drawHeight;
+        const peakY = yBase + drawHeight - height;
+        const peakX = i * step;
+        
+        // Create sharp peaks by directly connecting points
+        if (i === 0) {
+          ctx.lineTo(peakX, peakY);
+        } else {
+          // For sharper peaks, we can either:
+          // 1. Direct line connection (sharpest)
+          ctx.lineTo(peakX, peakY);
+          
+          // OR 2. Slight curve for less sharp but still pointed peaks
+          // const prevInst = levels[i - 1];
+          // const prevDisp = vizStyle === 'bars' ? (barLevels[i - 1] || 0) : prevInst;
+          // const prevHeight = prevDisp * drawHeight;
+          // const prevPeakY = yBase + drawHeight - prevHeight;
+          // const prevPeakX = (i - 1) * step;
+          // 
+          // // Create a slight curve for more natural peaks
+          // const controlX = (prevPeakX + peakX) / 2;
+          // const controlY = Math.min(prevPeakY, peakY) - Math.abs(peakY - prevPeakY) * 0.1;
+          // ctx.quadraticCurveTo(controlX, controlY, peakX, peakY);
+        }
+      }
+      
+      // Close the path by drawing to the right bottom and back to start
+      ctx.lineTo(w, h - labelHeight);
+      ctx.lineTo(0, h - labelHeight);
+      
+      // Create gradient fill for the mountain using theme-adaptive colors
+      const gradient = ctx.createLinearGradient(0, 0, 0, h);
+      // Use different color levels for more visual interest
+      const baseColor = getColorForLevel(0.5); // Base color
+      const topColor = getColorForLevel(0.8); // Top color (usually brighter)
+      
+      gradient.addColorStop(0, topColor.replace('rgb', 'rgba').replace(')', ', 0.9)'));
+      gradient.addColorStop(1, baseColor.replace('rgb', 'rgba').replace(')', ', 0.6)'));
+      
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      
+      // Add stroke for definition using theme color
+      ctx.strokeStyle = getColorForLevel(0.9);
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Draw individual mountain peaks if enabled
+      if (peaksChk.checked) {
+        for (let i = 0; i < count; i++) {
+          const inst = levels[i];
+          if (inst >= peaks[i]) peaks[i] = inst;
+          else if (PEAK_DECAY_PER_FRAME > 0) peaks[i] = Math.max(0, peaks[i] - PEAK_DECAY_PER_FRAME);
+          
+          const disp = vizStyle === 'bars' ? (barLevels[i] || 0) : inst;
+          const height = disp * drawHeight;
+          const peakY = yBase + drawHeight - height;
+          const peakX = i * step;
+          
+          // Draw peak marker using theme color
+          ctx.fillStyle = getColorForLevel(1.0); // Use the brightest color for peaks
+          ctx.beginPath();
+          ctx.arc(peakX, peakY, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Draw frequency labels at the bottom
+      ctx.fillStyle = '#aaa';
+      ctx.font = '10px ui-sans-serif';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < count; i++) {
+        const labelX = i * step;
+        ctx.fillText(labels[i], labelX, h - 5);
+      }
+    };
+
+    const drawCircularWaveform = (yBase) => {
+      const count = levels.length;
+      const centerX = w / 2;
+      const centerY = h / 2;
+      const maxRadius = Math.min(w, h) * 0.4;
+      const minRadius = maxRadius * 0.3;
+      
+      // Clear canvas with background color
+      ctx.fillStyle = BG_COLOR;
+      ctx.fillRect(0, 0, w, h);
+      
+      // Draw grid if enabled
+      if (gridChk.checked) {
+        ctx.save();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        
+        // Draw concentric circles
+        for (let r = 0; r < 5; r++) {
+          const radius = minRadius + (maxRadius - minRadius) * (r / 4);
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        // Draw radial lines
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2;
+          const x1 = centerX + Math.cos(angle) * minRadius;
+          const y1 = centerY + Math.sin(angle) * minRadius;
+          const x2 = centerX + Math.cos(angle) * maxRadius;
+          const y2 = centerY + Math.sin(angle) * maxRadius;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      
+      // Draw circular waveform
+      ctx.beginPath();
+      
+      // Draw the outer waveform
+      for (let i = 0; i <= count; i++) {
+        const index = i % count;
+        const inst = levels[index];
+        const disp = vizStyle === 'bars' ? (barLevels[index] || 0) : inst;
+        const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+        const radius = minRadius + (maxRadius - minRadius) * disp;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      
+      ctx.closePath();
+      
+      // Create gradient for the fill
+      const gradient = ctx.createRadialGradient(
+        centerX, centerY, minRadius,
+        centerX, centerY, maxRadius
+      );
+      const color = getColorForLevel(0.7);
+      gradient.addColorStop(0, color.replace('rgb', 'rgba').replace(')', ', 0.2)'));
+      gradient.addColorStop(1, color.replace('rgb', 'rgba').replace(')', ', 0.8)'));
+      
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      
+      // Add stroke for definition
+      ctx.strokeStyle = getColorForLevel(0.9);
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Draw inner waveform with higher intensity
+      ctx.beginPath();
+      
+      const innerMinRadius = minRadius * 0.7;
+      const innerMaxRadius = minRadius * 0.9;
+      
+      for (let i = 0; i <= count; i++) {
+        const index = i % count;
+        const inst = levels[index];
+        const disp = vizStyle === 'bars' ? (barLevels[index] || 0) : inst;
+        const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+        const radius = innerMinRadius + (innerMaxRadius - innerMinRadius) * disp * 0.7;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      
+      ctx.closePath();
+      
+      // Inner waveform styling
+      ctx.fillStyle = getColorForLevel(0.9);
+      ctx.fill();
+      ctx.strokeStyle = getColorForLevel(1.0);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // Draw peak indicators if enabled
+      if (peaksChk.checked) {
+        for (let i = 0; i < count; i++) {
+          const inst = levels[i];
+          if (inst >= peaks[i]) peaks[i] = inst;
+          else if (PEAK_DECAY_PER_FRAME > 0) peaks[i] = Math.max(0, peaks[i] - PEAK_DECAY_PER_FRAME);
+          
+          const disp = vizStyle === 'bars' ? (barLevels[i] || 0) : inst;
+          const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+          const radius = minRadius + (maxRadius - minRadius) * disp;
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          
+          // Draw peak marker
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Draw center circle with "AUDIO SPECTRUM" text
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, minRadius * 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = '#000000';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Draw text in the center
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 14px ui-sans-serif';
+      ctx.fillText('AUDIO SPECTRUM', centerX, centerY - 5);
+      ctx.font = '10px ui-sans-serif';
+      ctx.fillText('MUSIC VISUALIZER', centerX, centerY + 10);
+    };
+
     ensurePeaksSize(levels.length);
 
     if (vizStyle === 'bars') {
       drawBars(0);
+    } else if (vizStyle === 'mountain') {
+      drawMountains(0);
     } else if (vizStyle === 'spikes') {
       drawSpikes(0);
     } else if (vizStyle === 'circles') {
@@ -1520,6 +1777,8 @@
       drawWaveform(levels);
     } else if (vizStyle === 'radial') {
       drawRadial(levels);
+    } else if (vizStyle === 'circular') {
+      drawCircularWaveform(0);
     } else if (vizStyle === 'particles') {
       drawParticles(levels);
     }
