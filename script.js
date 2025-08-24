@@ -498,12 +498,16 @@
   // Demo beat simulation (every 500ms when no audio)
   let demoBeatInterval = null;
   function startDemoBeats() {
-    if (demoBeatInterval) clearInterval(demoBeatInterval);
-    demoBeatInterval = setInterval(() => {
-      if (!analyser || !freqData || freqData.every(val => val === 0)) {
-        triggerBeatGlow();
-      }
-    }, 500);
+    // Only start demo beats if we have an analyser but no active audio
+    if (analyser && (!freqData || freqData.every(val => val === 0))) {
+      if (demoBeatInterval) clearInterval(demoBeatInterval);
+      demoBeatInterval = setInterval(() => {
+        // Only trigger if we still have no audio data
+        if (analyser && (!freqData || freqData.every(val => val === 0))) {
+          triggerBeatGlow();
+        }
+      }, 500);
+    }
   }
 
   function stopDemoBeats() {
@@ -637,36 +641,59 @@
   }
 
   function create3DWaves(levels) {
-    threeMeshes.forEach(mesh => scene.remove(mesh));
-    threeMeshes = [];
+    // For performance, reuse existing mesh if it exists
+    let mesh = threeMeshes[0];
+    let geometry, material;
     
-    const width = levels.length;
-    const height = 20;
-    const geometry = new THREE.PlaneGeometry(6, 4, width - 1, height - 1);
-    
-    // Create wave displacement based on audio levels
-    const vertices = geometry.attributes.position.array;
-    for (let i = 0; i < vertices.length; i += 3) {
-      const x = vertices[i];
-      const y = vertices[i + 1];
-      const levelIndex = Math.floor((x + 3) / 6 * levels.length);
-      const level = levels[levelIndex] || 0;
+    if (!mesh) {
+      // Create new geometry and mesh
+      const width = levels.length;
+      const height = 20;
+      geometry = new THREE.PlaneGeometry(6, 4, width - 1, height - 1);
       
-      vertices[i + 2] = Math.sin(y * 2 + Date.now() * 0.005) * level * 2;
+      // Use theme-based color for the waves
+      const themeColor = getColorForLevel(0.7); // Use mid-range color from theme
+      const threeColor = new THREE.Color(themeColor);
+      
+      material = new THREE.MeshBasicMaterial({ 
+        color: threeColor,
+        wireframe: true,
+        emissive: new THREE.Color(0x000000)
+      });
+      
+      mesh = new THREE.Mesh(geometry, material);
+      mesh.rotation.x = -Math.PI / 4;
+      
+      scene.add(mesh);
+      threeMeshes.push(mesh);
+    } else {
+      // Update existing geometry
+      geometry = mesh.geometry;
+      material = mesh.material;
+      
+      // Update wave displacement based on audio levels with time-based animation
+      const time = Date.now() * 0.005;
+      const vertices = geometry.attributes.position.array;
+      
+      for (let i = 0; i < vertices.length; i += 3) {
+        const x = vertices[i];
+        const y = vertices[i + 1];
+        const levelIndex = Math.floor((x + 3) / 6 * levels.length);
+        const level = levels[levelIndex] || 0;
+        
+        // Create more dynamic wave pattern that responds to audio
+        const wave1 = Math.sin(y * 2 + time) * level;
+        const wave2 = Math.sin(x * 3 + time * 1.3) * level * 0.7;
+        const wave3 = Math.sin((x + y) * 1.5 + time * 0.7) * level * 0.5;
+        
+        vertices[i + 2] = (wave1 + wave2 + wave3) * 2;
+      }
+      geometry.attributes.position.needsUpdate = true;
+      
+      // Update color based on theme
+      const themeColor = getColorForLevel(0.7); // Use mid-range color from theme
+      material.color = new THREE.Color(themeColor);
     }
-    geometry.attributes.position.needsUpdate = true;
-    
-    const material = new THREE.MeshBasicMaterial({ 
-      color: 0x00ff88,
-      wireframe: true,
-      emissive: new THREE.Color(0x000000)
-    });
-    
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.rotation.x = -Math.PI / 4;
-    
-    scene.add(mesh);
-    threeMeshes.push(mesh);
   }
 
   function create3DCubeMatrix(levels) {
@@ -870,6 +897,10 @@
         break;
       case '3d-waves':
         create3DWaves(levels);
+        // Add some rotation for visual interest
+        if (threeMeshes.length > 0) {
+          scene.rotation.y += 0.005;
+        }
         break;
       case '3d-cube':
         create3DCubeMatrix(levels);
@@ -896,8 +927,11 @@
     backTo2DBtn.classList.add('show');
     
     init3D();
-    stopDemoBeats();
-    startDemoBeats(); // Restart for 3D mode
+    // Only restart demo beats if we have an analyser
+    if (analyser) {
+      stopDemoBeats();
+      startDemoBeats();
+    }
   }
 
   function switchTo2D() {
@@ -912,8 +946,11 @@
       threeMeshes = [];
     }
     
-    stopDemoBeats();
-    startDemoBeats(); // Restart for 2D mode
+    // Only restart demo beats if we have an analyser
+    if (analyser) {
+      stopDemoBeats();
+      startDemoBeats();
+    }
     ensureCanvasHiDPI();
   }
 
@@ -1463,6 +1500,22 @@
               
               // Add a subtle border
               ctx.strokeStyle = color;
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x, barY, barWidth, barHeight);
+            }
+          } else if (barStyle === 'plain-gradient') {
+            // Flatter style without glossy gradients - solid color fill
+            const barHeight = (segments * SEGMENT_HEIGHT);
+            if (barHeight > 0) {
+              const barY = yBase + drawHeight - barHeight;
+              
+              // Use solid color from theme without gradient
+              const color = getColorForLevel(disp);
+              ctx.fillStyle = color;
+              ctx.fillRect(x, barY, barWidth, barHeight);
+              
+              // Optional: very subtle border for definition (much less prominent)
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
               ctx.lineWidth = 1;
               ctx.strokeRect(x, barY, barWidth, barHeight);
             }
@@ -2043,6 +2096,10 @@
     ensureEQNodes();
     renderEQSliders();
     refreshEQEnable();
+    
+    // Start demo beats now that we have an analyser
+    startDemoBeats();
+    
     return audioContext;
   }
 
@@ -2750,8 +2807,8 @@
   loadCustomThemes(); // Load saved custom themes
   applyThemePreset(currentTheme);
   
-  // Start demo beats
-  startDemoBeats();
+  // Don't start demo beats on load - only start when audio is initialized
+  // startDemoBeats();
   
 
 })();
