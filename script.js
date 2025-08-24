@@ -24,6 +24,7 @@
   const particlesEffectChk = document.getElementById('particles-effect');
   const particleTrailsChk = document.getElementById('particle-trails');
   const particleFountainChk = document.getElementById('particle-fountain');
+  const fireworksChk = document.getElementById('fireworks');
   const cameraMovementChk = document.getElementById('camera-movement');
   const cameraPatternSel = document.getElementById('camera-pattern');
   const createThemeBtn = document.getElementById('create-theme');
@@ -118,6 +119,9 @@
   // 2D visualization state
   let waveformHistory = [];
   let particleSystem2D = [];
+  
+  // Fireworks system
+  let fireworksInterval = null;
   
   // Camera movement system
   let cameraAnimation = {
@@ -259,6 +263,10 @@
       createParticleFountain(intensity);
     }
     
+    // Fireworks effects (if enabled)
+    // Fireworks are now continuous, not beat-triggered
+    // The beat intensity still affects the size and number of fireworks
+    
     // Camera movement effects (if enabled and in 3D mode)
     if (cameraMovementChk && cameraMovementChk.checked && is3DMode) {
       triggerCameraMovement(intensity);
@@ -392,6 +400,209 @@
           particle.parentElement.removeChild(particle);
         }
       }, 1500);
+    }
+  }
+  
+  // Fireworks system
+  function createFireworks(intensity = 0.5) {
+    if (!particleContainer) {
+      particleContainer = document.createElement('div');
+      particleContainer.className = 'particle-container';
+      const targetElement = is3DMode ? threeContainer : canvas.parentElement;
+      targetElement.style.position = 'relative';
+      targetElement.appendChild(particleContainer);
+    }
+    
+    // For continuous fireworks, we'll create just one at a time for performance
+    // Create a firework rocket
+    const rocket = document.createElement('div');
+    rocket.className = 'particle firework-rocket';
+    
+    // Random starting position at the bottom
+    const startX = 50 + Math.random() * (particleContainer.offsetWidth - 100);
+    const startY = particleContainer.offsetHeight;
+    
+    // Target position at the top of the screen
+    const targetX = startX + (Math.random() - 0.5) * 100;
+    const targetY = 30 + Math.random() * 80; // Near the top
+    
+    // Calculate velocity to reach target
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const duration = 800 + Math.random() * 400; // 0.8-1.2 seconds
+    const speed = distance / duration * 16; // Convert to pixels per frame (60fps)
+    
+    const vx = (dx / distance) * speed;
+    const vy = (dy / distance) * speed;
+    
+    rocket.style.left = startX + 'px';
+    rocket.style.top = startY + 'px';
+    rocket.style.color = getColorForLevel(Math.random());
+    rocket.style.width = (2 + intensity * 2) + 'px';
+    rocket.style.height = (8 + intensity * 3) + 'px';
+    rocket.style.borderRadius = '2px';
+    rocket.style.boxShadow = '0 0 6px currentColor';
+    
+    particleContainer.appendChild(rocket);
+    
+    // Animate the rocket
+    let posX = startX;
+    let posY = startY;
+    let frameCount = 0;
+    const maxFrames = Math.ceil(duration / 16); // Convert to frames at 60fps
+    
+    function animateRocket() {
+      frameCount++;
+      posX += vx;
+      posY += vy;
+      
+      rocket.style.left = posX + 'px';
+      rocket.style.top = posY + 'px';
+      
+      // Add a trail effect (less frequent for performance)
+      if (frameCount % 5 === 0) {
+        const trail = document.createElement('div');
+        trail.className = 'particle firework-trail';
+        trail.style.left = (posX + (Math.random() - 0.5) * 2) + 'px';
+        trail.style.top = (posY + (Math.random() - 0.5) * 2) + 'px';
+        trail.style.color = rocket.style.color;
+        trail.style.width = (1 + intensity * 0.5) + 'px';
+        trail.style.height = (1 + intensity * 0.5) + 'px';
+        trail.style.opacity = '0.6';
+        trail.style.borderRadius = '50%';
+        trail.style.boxShadow = '0 0 3px currentColor';
+        particleContainer.appendChild(trail);
+        
+        // Fade out trail
+        setTimeout(() => {
+          if (trail.parentElement) {
+            trail.parentElement.removeChild(trail);
+          }
+        }, 250);
+      }
+      
+      // Check if rocket reached target or time is up
+      if (frameCount >= maxFrames || posY <= targetY) {
+        // Create explosion
+        createFireworkExplosion(posX, posY, intensity, rocket.style.color);
+        
+        // Remove rocket
+        if (rocket.parentElement) {
+          rocket.parentElement.removeChild(rocket);
+        }
+        return;
+      }
+      
+      // Limit animation frames for performance
+      if (frameCount % 2 === 0) {
+        requestAnimationFrame(animateRocket);
+      } else {
+        // Skip frame for performance
+        setTimeout(animateRocket, 16);
+      }
+    }
+    
+    animateRocket();
+  }
+  
+  // Firework explosion system
+  function createFireworkExplosion(x, y, intensity = 0.5, color) {
+    // Create a more impressive explosion with optimized particle count
+    const particleCount = Math.floor(100 + intensity * 100);
+    
+    // Create a bright flash at the explosion point
+    const flash = document.createElement('div');
+    flash.className = 'particle firework-flash';
+    flash.style.left = x + 'px';
+    flash.style.top = y + 'px';
+    flash.style.color = color;
+    flash.style.width = '20px';
+    flash.style.height = '20px';
+    flash.style.borderRadius = '50%';
+    flash.style.opacity = '0.9';
+    flash.style.boxShadow = '0 0 30px 15px currentColor';
+    particleContainer.appendChild(flash);
+    
+    // Remove flash after a short time
+    setTimeout(() => {
+      if (flash.parentElement) {
+        flash.parentElement.removeChild(flash);
+      }
+    }, 200);
+    
+    // Create particles in rings for a more structured explosion
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      
+      // Create particles in rings for better distribution
+      const ring = Math.floor(i / 20) % 3; // 3 rings
+      const angle = (i % 20) / 20 * Math.PI * 2; // Evenly distribute in ring
+      
+      // Different speeds for different rings
+      const baseSpeed = 2 + ring * 2 + Math.random() * 3 * intensity;
+      const vx = Math.cos(angle) * baseSpeed;
+      const vy = Math.sin(angle) * baseSpeed;
+      
+      // Set CSS custom properties for animation
+      particle.style.setProperty('--vx', vx + 'px');
+      particle.style.setProperty('--vy', vy + 'px');
+      particle.style.left = x + 'px';
+      particle.style.top = y + 'px';
+      particle.style.color = color;
+      particle.style.width = (2 + intensity * 2) + 'px';
+      particle.style.height = (2 + intensity * 2) + 'px';
+      particle.style.borderRadius = '50%';
+      particle.style.boxShadow = '0 0 8px currentColor';
+      
+      particleContainer.appendChild(particle);
+      
+      // Trigger explosion animation
+      particle.classList.add('firework-particle');
+      
+      // Remove particle after animation with slight variation
+      setTimeout(() => {
+        if (particle.parentElement) {
+          particle.parentElement.removeChild(particle);
+        }
+      }, 900 + Math.random() * 300);
+    }
+    
+    // Add some extra random particles for a more natural look
+    const extraParticles = Math.floor(30 * intensity);
+    for (let i = 0; i < extraParticles; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      
+      // Random direction and velocity
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1 + Math.random() * 8 * intensity;
+      const vx = Math.cos(angle) * speed;
+      const vy = Math.sin(angle) * speed;
+      
+      // Set CSS custom properties for animation
+      particle.style.setProperty('--vx', vx + 'px');
+      particle.style.setProperty('--vy', vy + 'px');
+      particle.style.left = x + 'px';
+      particle.style.top = y + 'px';
+      particle.style.color = color;
+      particle.style.width = (1 + intensity * 2) + 'px';
+      particle.style.height = (1 + intensity * 2) + 'px';
+      particle.style.borderRadius = '50%';
+      particle.style.boxShadow = '0 0 6px currentColor';
+      
+      particleContainer.appendChild(particle);
+      
+      // Trigger explosion animation
+      particle.classList.add('firework-particle');
+      
+      // Remove particle after animation
+      setTimeout(() => {
+        if (particle.parentElement) {
+          particle.parentElement.removeChild(particle);
+        }
+      }, 800 + Math.random() * 400);
     }
   }
   
@@ -2193,13 +2404,19 @@
       mediaStream = null;
     }
 
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const micSource = audioContext.createMediaStreamSource(mediaStream);
-    connectSource(micSource);
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const micSource = audioContext.createMediaStreamSource(mediaStream);
+      connectSource(micSource);
 
-    playBtn.disabled = true;
-    pauseBtn.disabled = true;
-    render();
+      playBtn.disabled = true;
+      pauseBtn.disabled = true;
+      render();
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Could not access microphone. Please ensure you are using HTTPS and have granted microphone permissions.\n\n' + 
+            'Error: ' + error.message);
+    }
   }
 
   // Event Handlers
@@ -2209,7 +2426,10 @@
   });
 
   micBtn.addEventListener('click', () => {
-    useMic().catch(console.error);
+    useMic().catch(error => {
+      console.error('Error accessing microphone:', error);
+      alert('Could not access microphone. Please ensure you are using HTTPS and have granted microphone permissions.');
+    });
   });
 
   urlBtn.addEventListener('click', async () => {
@@ -2332,6 +2552,29 @@
       // Clean up fountain particles
       const fountains = particleContainer.querySelectorAll('.particle-fountain');
       fountains.forEach(fountain => fountain.remove());
+    }
+  });
+  
+  fireworksChk.addEventListener('change', () => {
+    if (!fireworksChk.checked && particleContainer) {
+      // Clean up fireworks particles
+      const fireworks = particleContainer.querySelectorAll('.firework-particle, .firework-rocket, .firework-trail, .firework-flash');
+      fireworks.forEach(fw => fw.remove());
+      
+      // Clear interval
+      if (fireworksInterval) {
+        clearInterval(fireworksInterval);
+        fireworksInterval = null;
+      }
+    } else if (fireworksChk.checked) {
+      // Start continuous fireworks
+      if (fireworksInterval) clearInterval(fireworksInterval);
+      fireworksInterval = setInterval(() => {
+        if (fireworksChk.checked) {
+          // Use a low intensity for continuous fireworks to maintain performance
+          createFireworks(0.4);
+        }
+      }, 2000); // Launch a firework every 2 seconds for better performance
     }
   });
   
@@ -2884,6 +3127,15 @@
   removeUnwantedThemes(); // Remove unwanted themes before loading
   loadCustomThemes(); // Load saved custom themes
   applyThemePreset(currentTheme);
+  
+  // Initialize continuous fireworks if checkbox is already checked
+  if (fireworksChk && fireworksChk.checked) {
+    fireworksInterval = setInterval(() => {
+      if (fireworksChk.checked) {
+        createFireworks(0.4);
+      }
+    }, 2000);
+  }
   
   // Don't start demo beats on load - only start when audio is initialized
   // startDemoBeats();

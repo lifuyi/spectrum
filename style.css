@@ -279,6 +279,70 @@
       opacity: 0;
     }
   }
+  
+  /* Firework Particle Effects */
+  .firework-particle {
+    animation: fireworkParticle 1s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  }
+
+  @keyframes fireworkParticle {
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--vx), var(--vy)) scale(0.1);
+      opacity: 0;
+    }
+  }
+  
+  /* Firework Rocket Effects */
+  .firework-rocket {
+    animation: fireworkRocket 1s linear forwards;
+  }
+  
+  @keyframes fireworkRocket {
+    0% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-100px);
+      opacity: 1;
+    }
+  }
+  
+  /* Firework Trail Effects */
+  .firework-trail {
+    animation: fireworkTrail 0.6s ease-out forwards;
+  }
+  
+  @keyframes fireworkTrail {
+    0% {
+      transform: scale(1);
+      opacity: 0.7;
+    }
+    100% {
+      transform: scale(0.1);
+      opacity: 0;
+    }
+  }
+  
+  /* Firework Flash Effects */
+  .firework-flash {
+    animation: fireworkFlash 0.2s ease-out forwards;
+  }
+  
+  @keyframes fireworkFlash {
+    0% {
+      transform: scale(0.3);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(2.5);
+      opacity: 0;
+    }
+  }
 
   /* Theme Creator Modal */
   .theme-modal {
