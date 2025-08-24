@@ -224,6 +224,8 @@
     // Flash effects (if enabled)
     if (flashChk && flashChk.checked) {
       targetElement.classList.remove('beat-flash');
+      // Force reflow to ensure the class is properly removed before adding it again
+      targetElement.offsetHeight;
       targetElement.classList.add('beat-flash');
       setTimeout(() => {
         targetElement.classList.remove('beat-flash');
@@ -1271,6 +1273,9 @@
     }
   };
 
+  // Create a backup of built-in themes to handle custom theme overrides
+  const builtInThemes = JSON.parse(JSON.stringify(themes));
+
   function getColorForLevel(t) {
     return themes[currentTheme].colorForLevel(t);
   }
@@ -1280,7 +1285,18 @@
   }
 
   function applyThemePreset(themeName) {
-    const theme = themes[themeName];
+    // Try to get the theme from the main themes object first
+    let theme = themes[themeName];
+    
+    // If the theme doesn't exist or if we're switching to a built-in theme
+    // that might have been overridden by a custom theme, try to get it from builtInThemes
+    if (!theme || (builtInThemes.hasOwnProperty(themeName) && customThemes.hasOwnProperty(themeName))) {
+      // If it's a built-in theme that was overridden, use the built-in version
+      if (builtInThemes.hasOwnProperty(themeName)) {
+        theme = builtInThemes[themeName];
+      }
+    }
+    
     if (!theme) return;
     
     // Apply canvas effects
@@ -2697,6 +2713,10 @@
 
   themeSel.addEventListener('change', () => {
     currentTheme = themeSel.value;
+    
+    // When switching themes, we need to ensure we're using the correct theme
+    // If switching from a custom theme to a built-in theme, we need to make sure
+    // the built-in theme is not overridden by a custom theme with the same name
     applyThemePreset(currentTheme);
     handleToggleRedraw();
   });
