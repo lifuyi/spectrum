@@ -225,8 +225,8 @@
       }, duration);
     }
     
-    // Flash effects (if enabled)
-    if (flashChk && flashChk.checked) {
+    // Flash effects (if disabled - inverted logic)
+    if (flashChk && !flashChk.checked) {
       targetElement.classList.remove('beat-flash');
       // Force reflow to ensure the class is properly removed before adding it again
       targetElement.offsetHeight;
@@ -895,9 +895,11 @@
         const level = levels[levelIndex] || 0;
         
         // Create more dynamic wave pattern that responds to audio
-        const wave1 = Math.sin(y * 2 + time) * level;
-        const wave2 = Math.sin(x * 3 + time * 1.3) * level * 0.7;
-        const wave3 = Math.sin((x + y) * 1.5 + time * 0.7) * level * 0.5;
+        // Clamp level to prevent excessive displacement from 110% scaling
+        const clampedLevel = Math.min(1.0, level);
+        const wave1 = Math.sin(y * 2 + time) * clampedLevel;
+        const wave2 = Math.sin(x * 3 + time * 1.3) * clampedLevel * 0.7;
+        const wave3 = Math.sin((x + y) * 1.5 + time * 0.7) * clampedLevel * 0.5;
         
         vertices[i + 2] = (wave1 + wave2 + wave3) * 2;
       }
@@ -1171,9 +1173,15 @@
     const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
     const cssWidth = canvas.clientWidth;
     const cssHeight = canvas.clientHeight;
-    canvas.width = cssWidth * dpr;
-    canvas.height = cssHeight * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    
+    // Only resize if dimensions have actually changed
+    if (canvas.width !== cssWidth * dpr || canvas.height !== cssHeight * dpr) {
+      canvas.width = cssWidth * dpr;
+      canvas.height = cssHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    
+    return { width: cssWidth, height: cssHeight }; // Return CSS dimensions
   }
 
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -1488,11 +1496,15 @@
   const builtInThemes = JSON.parse(JSON.stringify(themes));
 
   function getColorForLevel(t) {
-    return themes[currentTheme].colorForLevel(t);
+    // Ensure we have a valid theme before accessing its properties
+    const theme = themes[currentTheme] || themes.classic;
+    return theme.colorForLevel(t);
   }
 
   function getLEDColorForSegment(segmentIndex, maxSegments) {
-    return themes[currentTheme].ledColorForSegment(segmentIndex, maxSegments);
+    // Ensure we have a valid theme before accessing its properties
+    const theme = themes[currentTheme] || themes.classic;
+    return theme.ledColorForSegment(segmentIndex, maxSegments);
   }
 
   function applyThemePreset(themeName) {
@@ -1587,6 +1599,16 @@
     eqSliders.forEach(slider => {
       slider.style.accentColor = theme.uiColors.primary;
     });
+    
+    // Force a redraw to show the new theme
+    immediateRedraw();
+    
+    // If we were rendering, we need to restart the render loop
+    // because immediateRedraw might have interfered with the animation frame
+    if (isRendering()) {
+      stopRendering();
+      render();
+    }
   }
 
   function buildBandRanges(sampleRate, bandCount) {
@@ -1624,8 +1646,9 @@
 
   function drawGrid(bandCount) {
     if (!gridChk.checked) return;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+    const dims = ensureCanvasHiDPI();
+    const w = dims.width;
+    const h = dims.height;
     const labelHeight = (vizStyle === 'bars' || vizStyle === 'mountain') ? 15 : 0;
     const drawHeight = h - labelHeight;
     ctx.save();
@@ -1640,6 +1663,7 @@
       ctx.moveTo(0, y + 0.5);
       ctx.lineTo(w, y + 0.5);
       ctx.stroke();
+      
     }
     if (vizStyle === 'bars') {
       const totalGap = (bandCount + 1) * BAR_GAP;
@@ -1676,11 +1700,13 @@
   }
 
   function drawSpectrum(levels) {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+    const dims = ensureCanvasHiDPI();
+    const w = dims.width;
+    const h = dims.height;
 
     // Use the current theme's background color instead of hardcoded BG_COLOR
-    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
+    const currentThemeObj = themes[currentTheme] || themes.classic;
+    ctx.fillStyle = currentThemeObj.bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
 
     drawGrid(levels.length);
@@ -1698,7 +1724,7 @@
       for (let i = 0; i < count; i++) {
         const inst = levels[i];
         const disp = vizStyle === 'bars' ? (barLevels[i] || 0) : inst;
-        const segments = Math.max(0, Math.min(maxSegments, Math.round(disp * maxSegments)));
+        const segments = Math.max(0, Math.min(maxSegments * 1.1, Math.round(disp * maxSegments)));
 
         if (barsChk.checked && barWidth > 0) {
           if (barStyle === 'led') {
@@ -1774,7 +1800,7 @@
       const maxPixels = h;
       ctx.lineWidth = 1;
       for (let i = 0; i < count; i++) {
-        const level = Math.max(0, Math.min(1, levels[i]));
+        const level = Math.max(0, Math.min(1.1, levels[i]));
         const pix = Math.round(level * maxPixels);
         const x = Math.round(i * step + step / 2);
         const topY = yBase + h - pix;
@@ -1798,45 +1824,37 @@
     };
 
     const drawMountains = (yBase) => {
-      const count = levels.length;
+      // Reduce the number of nodes for a cleaner look
+      const maxPoints = Math.min(levels.length, 64); // Limit to 64 points maximum
+      const step = Math.ceil(levels.length / maxPoints);
+      const reducedCount = Math.ceil(levels.length / step);
+      
       const labelHeight = 15;
       const drawHeight = h - labelHeight;
-      const step = w / (count - 1);
-      const labels = getBandLabels(count);
+      const pointSpacing = w / (reducedCount - 1);
+      const labels = getBandLabels(levels.length);
 
-      // Create a path for the mountain silhouette with sharper peaks
+      // Create a path for the mountain silhouette
       ctx.beginPath();
       
       // Start from the left bottom
       ctx.moveTo(0, h - labelHeight);
       
-      // Draw the mountain peaks with sharper points
-      for (let i = 0; i < count; i++) {
-        const inst = levels[i];
-        const disp = vizStyle === 'bars' ? (barLevels[i] || 0) : inst;
+      // Draw the mountain with reduced points
+      for (let i = 0; i < reducedCount; i++) {
+        // Get the index in the original levels array
+        const index = i * step;
+        const inst = levels[index];
+        const disp = vizStyle === 'bars' ? (barLevels[index] || 0) : inst;
         const height = disp * drawHeight;
         const peakY = yBase + drawHeight - height;
-        const peakX = i * step;
+        const peakX = i * pointSpacing;
         
-        // Create sharp peaks by directly connecting points
+        // Create the mountain path
         if (i === 0) {
           ctx.lineTo(peakX, peakY);
         } else {
-          // For sharper peaks, we can either:
-          // 1. Direct line connection (sharpest)
           ctx.lineTo(peakX, peakY);
-          
-          // OR 2. Slight curve for less sharp but still pointed peaks
-          // const prevInst = levels[i - 1];
-          // const prevDisp = vizStyle === 'bars' ? (barLevels[i - 1] || 0) : prevInst;
-          // const prevHeight = prevDisp * drawHeight;
-          // const prevPeakY = yBase + drawHeight - prevHeight;
-          // const prevPeakX = (i - 1) * step;
-          // 
-          // // Create a slight curve for more natural peaks
-          // const controlX = (prevPeakX + peakX) / 2;
-          // const controlY = Math.min(prevPeakY, peakY) - Math.abs(peakY - prevPeakY) * 0.1;
-          // ctx.quadraticCurveTo(controlX, controlY, peakX, peakY);
         }
       }
       
@@ -1856,38 +1874,25 @@
       ctx.fillStyle = gradient;
       ctx.fill();
       
-      // Add stroke for definition using theme color
-      ctx.strokeStyle = getColorForLevel(0.9);
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      // Remove the stroke (outline) for a cleaner look
+      // ctx.strokeStyle = getColorForLevel(0.9);
+      // ctx.lineWidth = 2;
+      // ctx.stroke();
       
-      // Draw individual mountain peaks if enabled
-      if (peaksChk.checked) {
-        for (let i = 0; i < count; i++) {
-          const inst = levels[i];
-          if (inst >= peaks[i]) peaks[i] = inst;
-          else if (PEAK_DECAY_PER_FRAME > 0) peaks[i] = Math.max(0, peaks[i] - PEAK_DECAY_PER_FRAME);
-          
-          const disp = vizStyle === 'bars' ? (barLevels[i] || 0) : inst;
-          const height = disp * drawHeight;
-          const peakY = yBase + drawHeight - height;
-          const peakX = i * step;
-          
-          // Draw peak marker using theme color
-          ctx.fillStyle = getColorForLevel(1.0); // Use the brightest color for peaks
-          ctx.beginPath();
-          ctx.arc(peakX, peakY, 3, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      
-      // Draw frequency labels at the bottom
+      // Remove individual mountain peaks to reduce visual clutter
+      // Draw frequency labels at the bottom (reduced number)
       ctx.fillStyle = '#aaa';
       ctx.font = '10px ui-sans-serif';
       ctx.textAlign = 'center';
-      for (let i = 0; i < count; i++) {
-        const labelX = i * step;
-        ctx.fillText(labels[i], labelX, h - 5);
+      
+      // Show fewer labels to avoid overcrowding
+      const labelStep = Math.max(1, Math.floor(reducedCount / 8)); // Show ~8 labels
+      for (let i = 0; i < reducedCount; i += labelStep) {
+        const index = i * step;
+        const labelX = i * pointSpacing;
+        // Get the appropriate label for the original frequency
+        const labelIndex = Math.min(index, labels.length - 1);
+        ctx.fillText(labels[labelIndex], labelX, h - 5);
       }
     };
 
@@ -2059,19 +2064,23 @@
       drawCircularWaveform(0);
     } else if (vizStyle === 'particles') {
       drawParticles(levels);
+    } else if (vizStyle === 'spectrogram') {
+      drawSpectrogram(levels);
     }
   }
 
   // New 2D Visualization Functions
   function drawCircles(levels) {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+    const dims = ensureCanvasHiDPI();
+    const w = dims.width;
+    const h = dims.height;
     const centerX = w / 2;
     const centerY = h / 2;
     const maxRadius = Math.min(w, h) / 3;
     
     // Use the current theme's background color instead of hardcoded BG_COLOR
-    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
+    const currentThemeObj = themes[currentTheme] || themes.classic;
+    ctx.fillStyle = currentThemeObj.bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
     
     drawGrid(levels.length);
@@ -2101,11 +2110,13 @@
   }
 
   function drawWaveform(levels) {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+    const dims = ensureCanvasHiDPI();
+    const w = dims.width;
+    const h = dims.height;
     
     // Use the current theme's background color instead of hardcoded BG_COLOR
-    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
+    const currentThemeObj = themes[currentTheme] || themes.classic;
+    ctx.fillStyle = currentThemeObj.bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
     
     // Add to history
@@ -2150,14 +2161,16 @@
   }
 
   function drawRadial(levels) {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+    const dims = ensureCanvasHiDPI();
+    const w = dims.width;
+    const h = dims.height;
     const centerX = w / 2;
     const centerY = h / 2;
     const maxRadius = Math.min(w, h) / 2 - 20;
     
     // Use the current theme's background color instead of hardcoded BG_COLOR
-    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
+    const currentThemeObj = themes[currentTheme] || themes.classic;
+    ctx.fillStyle = currentThemeObj.bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
     
     drawGrid(levels.length);
@@ -2200,12 +2213,79 @@
     });
   }
 
-  function drawParticles(levels) {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+  // Spectrogram visualization
+  let spectrogramData = [];
+  const SPECTROGRAM_HISTORY = 300; // Number of time slices to store
+  
+  function drawSpectrogram(levels) {
+    const dims = ensureCanvasHiDPI();
+    const w = dims.width;
+    const h = dims.height;
     
     // Use the current theme's background color instead of hardcoded BG_COLOR
-    ctx.fillStyle = themes[currentTheme].bgColor || BG_COLOR;
+    const currentThemeObj = themes[currentTheme] || themes.classic;
+    ctx.fillStyle = currentThemeObj.bgColor || BG_COLOR;
+    ctx.fillRect(0, 0, w, h);
+    
+    // Add current levels to spectrogram data
+    spectrogramData.push([...levels]);
+    if (spectrogramData.length > SPECTROGRAM_HISTORY) {
+      spectrogramData.shift(); // Remove oldest data
+    }
+    
+    // Draw spectrogram
+    const sliceWidth = w / SPECTROGRAM_HISTORY;
+    const bandHeight = h / levels.length;
+    
+    // Draw from oldest to newest (left to right)
+    for (let timeIndex = 0; timeIndex < spectrogramData.length; timeIndex++) {
+      const slice = spectrogramData[timeIndex];
+      const x = (timeIndex / SPECTROGRAM_HISTORY) * w;
+      
+      // Draw each frequency band
+      for (let bandIndex = 0; bandIndex < slice.length; bandIndex++) {
+        const level = slice[bandIndex];
+        const y = h - (bandIndex / slice.length) * h;
+        
+        // Color based on intensity
+        const color = getColorForLevel(level);
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y - bandHeight, sliceWidth + 1, bandHeight + 1);
+      }
+    }
+    
+    // Draw time axis labels
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px ui-sans-serif';
+    ctx.textAlign = 'center';
+    
+    // Draw a few time labels
+    const timeLabelCount = 5;
+    for (let i = 0; i <= timeLabelCount; i++) {
+      const xPos = (i / timeLabelCount) * w;
+      const timeSec = Math.round((i / timeLabelCount) * 30); // Assuming 30 sec history
+      ctx.fillText(`${timeSec}s`, xPos, h - 5);
+    }
+    
+    // Draw frequency labels
+    ctx.textAlign = 'right';
+    const freqLabels = getBandLabels(levels.length);
+    const freqLabelStep = Math.max(1, Math.floor(levels.length / 8));
+    
+    for (let i = 0; i < levels.length; i += freqLabelStep) {
+      const yPos = h - (i / levels.length) * h;
+      ctx.fillText(freqLabels[i], w - 5, yPos - 5);
+    }
+  }
+  
+  function drawParticles(levels) {
+    const dims = ensureCanvasHiDPI();
+    const w = dims.width;
+    const h = dims.height;
+    
+    // Use the current theme's background color instead of hardcoded BG_COLOR
+    const currentThemeObj = themes[currentTheme] || themes.classic;
+    ctx.fillStyle = currentThemeObj.bgColor || BG_COLOR;
     ctx.fillRect(0, 0, w, h);
     
     // Update particle system
@@ -2251,8 +2331,21 @@
     ctx.globalAlpha = 1.0;
   }
 
-  function render() {
+  // Frame rate limiting for performance
+  let lastRenderTime = 0;
+  let targetFPS = 60; // Target frames per second
+  let frameInterval = 1000 / targetFPS;
+  
+  function render(timestamp) {
     if (!analyser) return;
+    
+    // Frame rate limiting
+    if (timestamp - lastRenderTime < frameInterval) {
+      animationId = requestAnimationFrame(render);
+      return;
+    }
+    lastRenderTime = timestamp;
+    
     analyser.getByteFrequencyData(freqData);
 
     let levels;
@@ -2504,7 +2597,16 @@
   function handleToggleRedraw() {
     if (!isRendering()) {
       immediateRedraw();
+    } else {
+      // If currently rendering, restart the render loop to ensure proper sizing
+      stopRendering();
+      render();
     }
+  }
+  
+  // Clear spectrogram data
+  function clearSpectrogramData() {
+    spectrogramData = [];
   }
 
   gridChk.addEventListener('change', handleToggleRedraw);
@@ -2536,6 +2638,26 @@
     if (!particlesEffectChk.checked && particleContainer) {
       particleContainer.innerHTML = '';
     }
+  });
+  
+  // Low power mode
+  const lowPowerChk = document.getElementById('low-power');
+  let lowPowerMode = false;
+  
+  function setLowPowerMode(enabled) {
+    lowPowerMode = enabled;
+    if (lowPowerMode) {
+      // Reduce frame rate target
+      targetFPS = 30;
+    } else {
+      // Restore normal frame rate
+      targetFPS = 60;
+    }
+    frameInterval = 1000 / targetFPS;
+  }
+  
+  lowPowerChk.addEventListener('change', () => {
+    setLowPowerMode(lowPowerChk.checked);
   });
   
   // Event listeners for new particle effects
@@ -2901,8 +3023,41 @@
     event.target.value = ''; // Reset file input
   }
 
+  // Screenshot functionality
+  function takeScreenshot() {
+    const link = document.createElement('a');
+    link.download = 'winamp-spectrum-' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.png';
+    
+    if (is3DMode) {
+      // For 3D mode, we need to use the renderer's output
+      if (renderer) {
+        try {
+          // Render the scene one more time to ensure it's up to date
+          renderer.render(scene, camera);
+          // Convert the canvas to a data URL
+          link.href = renderer.domElement.toDataURL();
+          link.click();
+        } catch (e) {
+          console.error('Error taking 3D screenshot:', e);
+          alert('Error taking screenshot. Check console for details.');
+        }
+      }
+    } else {
+      // For 2D mode, use the canvas directly
+      try {
+        link.href = canvas.toDataURL();
+        link.click();
+      } catch (e) {
+        console.error('Error taking 2D screenshot:', e);
+        alert('Error taking screenshot. Check console for details.');
+      }
+    }
+  }
+  
   // Theme creator event listeners
   createThemeBtn.addEventListener('click', openThemeCreator);
+  document.getElementById('screenshot').addEventListener('click', takeScreenshot);
+  document.getElementById('fullscreen').addEventListener('click', toggleFullscreen);
   
   document.getElementById('close-theme-modal').addEventListener('click', closeThemeCreator);
   document.getElementById('cancel-theme').addEventListener('click', closeThemeCreator);
@@ -2945,7 +3100,13 @@
 
   styleSel.addEventListener('change', () => {
     const newStyle = styleSel.value;
+    const oldStyle = vizStyle;
     vizStyle = newStyle;
+    
+    // Clear spectrogram data when switching to or from spectrogram mode
+    if (oldStyle === 'spectrogram' || newStyle === 'spectrogram') {
+      clearSpectrogramData();
+    }
     
     // Switch between 2D and 3D modes
     if (newStyle.startsWith('3d-')) {
@@ -2972,16 +3133,6 @@
     // If switching from a custom theme to a built-in theme, we need to make sure
     // the built-in theme is not overridden by a custom theme with the same name
     applyThemePreset(currentTheme);
-    
-    // Force a redraw to show the new theme
-    immediateRedraw();
-    
-    // If we were rendering, we need to restart the render loop
-    // because immediateRedraw might have interfered with the animation frame
-    if (isRendering()) {
-      stopRendering();
-      render();
-    }
   });
 
   barStyleSel.addEventListener('change', () => {
@@ -2991,26 +3142,39 @@
 
   effectsChk.addEventListener('change', () => {
     applyThemePreset(currentTheme);
-    
-    // Force a redraw to show the new theme
-    immediateRedraw();
-    
-    // If we were rendering, we need to restart the render loop
-    // because immediateRedraw might have interfered with the animation frame
-    if (isRendering()) {
-      stopRendering();
-      render();
-    }
   });
 
   window.addEventListener('resize', () => {
-    ensureCanvasHiDPI();
-    if (renderer) {
+    // Ensure proper canvas sizing
+    const dims = ensureCanvasHiDPI();
+    
+    if (is3DMode && renderer) {
       const rect = threeContainer.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
         camera.aspect = rect.width / rect.height;
         camera.updateProjectionMatrix();
         renderer.setSize(rect.width, rect.height);
+      }
+    } else if (!is3DMode) {
+      // For 2D mode, ensure canvas is properly sized and redraw
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        // Clear the canvas first
+        ctx.clearRect(0, 0, dims.width, dims.height);
+        
+        // Clear spectrogram data on resize to prevent display issues
+        if (vizStyle === 'spectrogram') {
+          clearSpectrogramData();
+        }
+        
+        // Redraw the visualization to match new canvas dimensions
+        if (isRendering()) {
+          stopRendering();
+          render();
+        } else {
+          // If not currently rendering, do a single redraw
+          immediateRedraw();
+        }
       }
     }
   });
@@ -3127,6 +3291,7 @@
   removeUnwantedThemes(); // Remove unwanted themes before loading
   loadCustomThemes(); // Load saved custom themes
   applyThemePreset(currentTheme);
+  setupKeyboardShortcuts(); // Initialize keyboard shortcuts
   
   // Initialize continuous fireworks if checkbox is already checked
   if (fireworksChk && fireworksChk.checked) {
@@ -3140,5 +3305,191 @@
   // Don't start demo beats on load - only start when audio is initialized
   // startDemoBeats();
   
+  // Keyboard shortcuts
+  function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+      // Ignore if typing in an input field
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        return;
+      }
+      
+      switch (e.key) {
+        case ' ': // Spacebar - Play/Pause
+          e.preventDefault();
+          if (mediaElement) {
+            if (mediaElement.paused) {
+              mediaElement.play();
+            } else {
+              mediaElement.pause();
+            }
+          }
+          break;
+        case 'ArrowRight': // Next track
+          e.preventDefault();
+          if (playlist.length > 1) {
+            const nextIndex = (currentTrackIndex + 1) % playlist.length;
+            playFromPlaylist(nextIndex);
+          }
+          break;
+        case 'ArrowLeft': // Previous track
+          e.preventDefault();
+          if (playlist.length > 1) {
+            const prevIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
+            playFromPlaylist(prevIndex);
+          }
+          break;
+        case 'f': // F key - Toggle fullscreen
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+      }
+    });
+  }
+  
+  // Fullscreen mode
+  function toggleFullscreen() {
+    const elem = document.body;
+    if (!document.fullscreenElement) {
+      elem.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }
+  
+  // Handle fullscreen change events
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+  document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+  
+  function handleFullscreenChange() {
+    // Small delay to ensure DOM has updated
+    setTimeout(() => {
+      // Ensure proper canvas sizing
+      const dims = ensureCanvasHiDPI();
+      
+      if (is3DMode && renderer) {
+        const rect = threeContainer.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          camera.aspect = rect.width / rect.height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(rect.width, rect.height);
+        }
+      } else if (!is3DMode) {
+        // For 2D mode, ensure canvas is properly sized and redraw
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          // Clear the canvas first
+          ctx.clearRect(0, 0, dims.width, dims.height);
+          
+          // Clear spectrogram data on fullscreen change to prevent display issues
+          if (vizStyle === 'spectrogram') {
+            clearSpectrogramData();
+          }
+          
+          // Redraw the visualization to match new canvas dimensions
+          if (isRendering()) {
+            stopRendering();
+            render();
+          } else {
+            // If not currently rendering, do a single redraw
+            immediateRedraw();
+          }
+        }
+      }
+    }, 100);
+  }
+  
+  // Cleanup function for page unload
+  function cleanup() {
+    // Stop all animations and intervals
+    stopRendering();
+    stopDemoBeats();
+    
+    // Clear any fireworks interval
+    if (fireworksInterval) {
+      clearInterval(fireworksInterval);
+      fireworksInterval = null;
+    }
+    
+    // Pause and cleanup media
+    if (mediaElement) {
+      mediaElement.pause();
+      try {
+        URL.revokeObjectURL(mediaElement.src);
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+      mediaElement = null;
+    }
+    
+    // Disconnect audio nodes
+    try {
+      if (sourceNode) {
+        sourceNode.disconnect();
+        sourceNode = null;
+      }
+      if (eqNodes) {
+        eqNodes.input.disconnect();
+        eqNodes.output.disconnect();
+        eqNodes = null;
+      }
+      if (analyser) {
+        analyser.disconnect();
+        analyser = null;
+      }
+    } catch (e) {
+      // Ignore errors during cleanup
+    }
+    
+    // Close audio context
+    if (audioContext && audioContext.state !== 'closed') {
+      try {
+        audioContext.close();
+        audioContext = null;
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+    }
+    
+    // Stop media stream
+    if (mediaStream) {
+      try {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+    }
+    
+    // Clean up 3D resources
+    if (scene) {
+      threeMeshes.forEach(mesh => {
+        try {
+          scene.remove(mesh);
+          if (mesh.geometry) mesh.geometry.dispose();
+          if (mesh.material) mesh.material.dispose();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+      });
+      threeMeshes = [];
+    }
+    
+    if (renderer) {
+      try {
+        renderer.dispose();
+        renderer = null;
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+    }
+  }
+  
+  // Add cleanup on page unload
+  window.addEventListener('beforeunload', cleanup);
+  window.addEventListener('unload', cleanup);
 
 })();

@@ -33,6 +33,7 @@
           <option value="radial">2D Radial</option>
           <option value="circular">2D Circular Waveform</option>
           <option value="particles">2D Particles</option>
+          <option value="spectrogram">2D Spectrogram</option>
           <option value="3d-bars">3D Bars</option>
           <option value="3d-sphere">3D Sphere</option>
           <option value="3d-tunnel">3D Tunnel</option>
@@ -66,6 +67,8 @@
         </select>
       </label>
       <button id="create-theme" class="btn" title="Create Custom Theme">Create Theme</button>
+      <button id="screenshot" class="btn" title="Save Screenshot">Screenshot</button>
+      <button id="fullscreen" class="btn" title="Toggle Fullscreen">Fullscreen</button>
       <label><input id="effects" type="checkbox" checked> Effects</label>
       <label><input id="grid" type="checkbox" checked> Grid</label>
       <label><input id="bars" type="checkbox" checked> Bars</label>
@@ -78,6 +81,7 @@
       <label><input id="particle-fountain" type="checkbox"> Particle Fountain</label>
       <label><input id="fireworks" type="checkbox"> Fireworks</label>
       <label><input id="camera-movement" type="checkbox"> 3D Camera Dance</label>
+      <label><input id="low-power" type="checkbox"> Low Power Mode</label>
       <label>Camera Pattern
         <select id="camera-pattern">
           <option value="random" selected>Random</option>
@@ -116,7 +120,7 @@
     <div class="eq-sliders" id="eq-sliders"></div>
   </section>
   <footer>
-    20-band log spectrum with LED segments, peak-hold, classic color ramp. Now with 3D visualizations and beat detection!
+    20-band log spectrum with LED segments, peak-hold, classic color ramp. Now with 3D visualizations, beat detection, spectrogram view, and keyboard shortcuts!
   </footer>
 
   <!-- Theme Creator Modal -->
