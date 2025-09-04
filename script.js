@@ -762,7 +762,20 @@
   // 3D Visualizations
   function create3DBars(levels) {
     // Clear previous meshes
-    threeMeshes.forEach(mesh => scene.remove(mesh));
+    threeMeshes.forEach(mesh => {
+      scene.remove(mesh);
+      // Dispose of geometry and material to prevent memory leaks
+      if (mesh.geometry) {
+        mesh.geometry.dispose();
+      }
+      if (mesh.material) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(material => material.dispose());
+        } else {
+          mesh.material.dispose();
+        }
+      }
+    });
     threeMeshes = [];
     
     const barWidth = 0.15;
@@ -787,7 +800,20 @@
   }
 
   function create3DSphere(levels) {
-    threeMeshes.forEach(mesh => scene.remove(mesh));
+    threeMeshes.forEach(mesh => {
+      scene.remove(mesh);
+      // Dispose of geometry and material to prevent memory leaks
+      if (mesh.geometry) {
+        mesh.geometry.dispose();
+      }
+      if (mesh.material) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(material => material.dispose());
+        } else {
+          mesh.material.dispose();
+        }
+      }
+    });
     threeMeshes = [];
     
     const radius = 2;
@@ -818,7 +844,20 @@
   }
 
   function create3DTunnel(levels) {
-    threeMeshes.forEach(mesh => scene.remove(mesh));
+    threeMeshes.forEach(mesh => {
+      scene.remove(mesh);
+      // Dispose of geometry and material to prevent memory leaks
+      if (mesh.geometry) {
+        mesh.geometry.dispose();
+      }
+      if (mesh.material) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(material => material.dispose());
+        } else {
+          mesh.material.dispose();
+        }
+      }
+    });
     threeMeshes = [];
     
     const rings = 20;
@@ -854,61 +893,53 @@
   }
 
   function create3DWaves(levels) {
-    // For performance, reuse existing mesh if it exists
-    let mesh = threeMeshes[0];
-    let geometry, material;
+    // Clear previous meshes to ensure clean state
+    threeMeshes.forEach(mesh => scene.remove(mesh));
+    threeMeshes = [];
     
-    if (!mesh) {
-      // Create new geometry and mesh
-      const width = levels.length;
-      const height = 20;
-      geometry = new THREE.PlaneGeometry(6, 4, width - 1, height - 1);
+    // Create new geometry and mesh
+    const width = Math.max(10, levels.length); // Ensure minimum width
+    const height = 20;
+    const geometry = new THREE.PlaneGeometry(6, 4, width - 1, height - 1);
+    
+    // Use theme-based color for the waves
+    const themeColor = getColorForLevel(0.7); // Use mid-range color from theme
+    const threeColor = new THREE.Color(themeColor);
+    
+    const material = new THREE.MeshBasicMaterial({ 
+      color: threeColor,
+      wireframe: true,
+      emissive: new THREE.Color(0x000000)
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x = -Math.PI / 4;
+    
+    // Update wave displacement based on audio levels with time-based animation
+    const time = Date.now() * 0.005;
+    const vertices = geometry.attributes.position.array;
+    
+    for (let i = 0; i < vertices.length; i += 3) {
+      const x = vertices[i];
+      const y = vertices[i + 1];
+      const levelIndex = Math.max(0, Math.min(levels.length - 1, Math.floor((x + 3) / 6 * (levels.length - 1))));
+      const level = levels[levelIndex] || 0;
       
-      // Use theme-based color for the waves
-      const themeColor = getColorForLevel(0.7); // Use mid-range color from theme
-      const threeColor = new THREE.Color(themeColor);
+      // Create more dynamic wave pattern that responds to audio
+      // Clamp level to prevent excessive displacement
+      const clampedLevel = Math.min(1.0, level);
+      const wave1 = Math.sin(y * 2 + time) * clampedLevel;
+      const wave2 = Math.sin(x * 3 + time * 1.3) * clampedLevel * 0.7;
+      const wave3 = Math.sin((x + y) * 1.5 + time * 0.7) * clampedLevel * 0.5;
       
-      material = new THREE.MeshBasicMaterial({ 
-        color: threeColor,
-        wireframe: true,
-        emissive: new THREE.Color(0x000000)
-      });
-      
-      mesh = new THREE.Mesh(geometry, material);
-      mesh.rotation.x = -Math.PI / 4;
-      
-      scene.add(mesh);
-      threeMeshes.push(mesh);
-    } else {
-      // Update existing geometry
-      geometry = mesh.geometry;
-      material = mesh.material;
-      
-      // Update wave displacement based on audio levels with time-based animation
-      const time = Date.now() * 0.005;
-      const vertices = geometry.attributes.position.array;
-      
-      for (let i = 0; i < vertices.length; i += 3) {
-        const x = vertices[i];
-        const y = vertices[i + 1];
-        const levelIndex = Math.floor((x + 3) / 6 * levels.length);
-        const level = levels[levelIndex] || 0;
-        
-        // Create more dynamic wave pattern that responds to audio
-        // Clamp level to prevent excessive displacement from 110% scaling
-        const clampedLevel = Math.min(1.0, level);
-        const wave1 = Math.sin(y * 2 + time) * clampedLevel;
-        const wave2 = Math.sin(x * 3 + time * 1.3) * clampedLevel * 0.7;
-        const wave3 = Math.sin((x + y) * 1.5 + time * 0.7) * clampedLevel * 0.5;
-        
-        vertices[i + 2] = (wave1 + wave2 + wave3) * 2;
-      }
-      geometry.attributes.position.needsUpdate = true;
-      
-      // Update color based on theme
-      const themeColor = getColorForLevel(0.7); // Use mid-range color from theme
-      material.color = new THREE.Color(themeColor);
+      vertices[i + 2] = (wave1 + wave2 + wave3) * 2;
     }
+    
+    // Mark geometry as needing update
+    geometry.attributes.position.needsUpdate = true;
+    
+    scene.add(mesh);
+    threeMeshes.push(mesh);
   }
 
   function create3DCubeMatrix(levels) {
@@ -1157,7 +1188,20 @@
     
     // Clean up 3D resources
     if (scene) {
-      threeMeshes.forEach(mesh => scene.remove(mesh));
+      threeMeshes.forEach(mesh => {
+        scene.remove(mesh);
+        // Dispose of geometry and material to prevent memory leaks
+        if (mesh.geometry) {
+          mesh.geometry.dispose();
+        }
+        if (mesh.material) {
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(material => material.dispose());
+          } else {
+            mesh.material.dispose();
+          }
+        }
+      });
       threeMeshes = [];
     }
     
