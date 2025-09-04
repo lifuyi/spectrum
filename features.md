@@ -76,6 +76,7 @@
 - Use microphone input
 - Play/Pause controls
 - 20-band equalizer with preset controls
+- Playlist management for multiple tracks
 
 ## Additional Features
 - **Screenshot Capture**: Save visualizations as PNG images

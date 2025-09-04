@@ -50,6 +50,13 @@ Toggle various visual effects on/off:
 - **Equalizer**: Adjust 20-band frequency levels
 - **Reset EQ**: Reset all equalizer bands to 0dB
 
+## Playlist Management
+
+- When loading audio files or URLs, they are automatically added to the playlist
+- Click on any track in the playlist to switch between songs
+- Use the **Arrow Left/Right** keyboard shortcuts to navigate between tracks
+- The active track is highlighted in the playlist
+
 ## Customization Options
 
 ### Peak Hold Time
@@ -99,9 +106,9 @@ Toggle various visual effects on/off:
 ## Keyboard Shortcuts
 
 - **Space**: Play/Pause (when audio is loaded)
-- **Arrow Left/Right**: Previous/Next track
+- **Arrow Left**: Previous track in playlist
+- **Arrow Right**: Next track in playlist
 - **F**: Toggle fullscreen mode
-- **M**: Toggle mute
 
 ## Troubleshooting
 
