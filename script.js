@@ -2441,7 +2441,10 @@
 
     if (mediaElement) {
       mediaElement.pause();
-      URL.revokeObjectURL(mediaElement.src);
+      // Only revoke blob URLs
+      if (mediaElement.src.startsWith('blob:')) {
+        URL.revokeObjectURL(mediaElement.src);
+      }
     }
     mediaElement = new Audio();
     const objectUrl = URL.createObjectURL(file);
@@ -2455,7 +2458,7 @@
     playBtn.disabled = false;
     pauseBtn.disabled = false;
     await mediaElement.play().catch(() => {});
-    addToPlaylist({ title: file.name, url: objectUrl, isBlob: true });
+    addToPlaylist({ title: file.name, url: objectUrl, file: file, isBlob: true });
     render();
   }
 
@@ -2466,7 +2469,12 @@
 
     if (mediaElement) {
       mediaElement.pause();
-      try { URL.revokeObjectURL(mediaElement.src); } catch {}
+      // Only revoke blob URLs
+      try { 
+        if (mediaElement.src.startsWith('blob:')) {
+          URL.revokeObjectURL(mediaElement.src); 
+        }
+      } catch {}
     }
     mediaElement = new Audio();
     mediaElement.src = url;
@@ -2480,6 +2488,34 @@
     pauseBtn.disabled = false;
     await mediaElement.play().catch(() => {});
     addToPlaylist({ title: url, url });
+    render();
+  }
+
+  async function useUrlForPlaylist(url) {
+    await setupContextIfNeeded();
+    stopRendering();
+    resetPeaks();
+
+    if (mediaElement) {
+      mediaElement.pause();
+      // Only revoke object URLs, not regular URLs
+      try { 
+        if (mediaElement.src.startsWith('blob:')) {
+          URL.revokeObjectURL(mediaElement.src); 
+        }
+      } catch {}
+    }
+    mediaElement = new Audio();
+    mediaElement.src = url;
+    mediaElement.crossOrigin = 'anonymous';
+    mediaElement.loop = true;
+
+    const trackNode = audioContext.createMediaElementSource(mediaElement);
+    connectSource(trackNode);
+
+    playBtn.disabled = false;
+    pauseBtn.disabled = false;
+    await mediaElement.play().catch(() => {});
     render();
   }
 
@@ -2545,7 +2581,16 @@
   });
 
   function addToPlaylist(item) {
-    const exist = playlist.findIndex((p) => p.url === item.url);
+    // For blob URLs, we need to check by a more stable identifier
+    let exist = -1;
+    if (item.isBlob) {
+      // For blob items, check by title or other properties
+      exist = playlist.findIndex((p) => p.title === item.title && p.isBlob);
+    } else {
+      // For regular URLs, check by URL
+      exist = playlist.findIndex((p) => p.url === item.url);
+    }
+    
     if (exist !== -1) {
       currentTrackIndex = exist;
       highlightActiveTrack();
@@ -2580,7 +2625,34 @@
     const item = playlist[idx];
     if (!item) return;
     currentTrackIndex = idx;
-    await useUrl(item.url);
+    
+    if (item.isBlob && item.file) {
+      // For blob files, recreate the blob URL
+      if (mediaElement) {
+        mediaElement.pause();
+        // Revoke the old blob URL if it exists
+        if (mediaElement.src.startsWith('blob:')) {
+          try { URL.revokeObjectURL(mediaElement.src); } catch {}
+        }
+      }
+      
+      mediaElement = new Audio();
+      const objectUrl = URL.createObjectURL(item.file);
+      mediaElement.src = objectUrl;
+      mediaElement.crossOrigin = 'anonymous';
+      mediaElement.loop = true;
+
+      const trackNode = audioContext.createMediaElementSource(mediaElement);
+      connectSource(trackNode);
+
+      playBtn.disabled = false;
+      pauseBtn.disabled = false;
+      await mediaElement.play().catch(() => {});
+      render();
+    } else {
+      // For regular URLs, use the existing function
+      await useUrlForPlaylist(item.url);
+    }
     highlightActiveTrack();
   }
 
