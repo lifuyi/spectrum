@@ -35,18 +35,6 @@
   const peakVelocityValEl = document.getElementById('peak-velocity-val');
   const beatSensitivityEl = document.getElementById('beat-sensitivity');
   const beatSensitivityValEl = document.getElementById('beat-sensitivity-val');
-  
-  // New effect checkboxes
-  const rippleChk = document.getElementById('ripple');
-  const colorShiftChk = document.getElementById('color-shift');
-  const pulseChk = document.getElementById('pulse');
-  const lightningChk = document.getElementById('lightning');
-  
-  // Debug logs
-  console.log('Ripple checkbox:', rippleChk);
-  console.log('Color shift checkbox:', colorShiftChk);
-  console.log('Pulse checkbox:', pulseChk);
-  console.log('Lightning checkbox:', lightningChk);
 
   // Audio
   let audioContext = null;
@@ -180,16 +168,12 @@
     // Use configurable threshold
     const threshold = beatSensitivityEl ? parseFloat(beatSensitivityEl.value) : beatDetection.threshold;
     
-    console.log('Beat detection - Current energy:', currentEnergy, 'Average energy:', averageEnergy, 'Threshold:', threshold);
-    
     if (currentEnergy > averageEnergy * threshold && 
         timeSinceLastBeat > beatDetection.minInterval) {
       beatDetection.lastBeat = now;
       
       // Calculate beat intensity (how much stronger than average)
       const intensity = Math.min(2, (currentEnergy / averageEnergy) - 1);
-      
-      console.log('Beat detected with intensity:', intensity);
       
       // Track intensity history for shake effects
       beatDetection.intensityHistory.push(intensity);
@@ -205,8 +189,6 @@
 
   // Beat Glow and All Effects
   function triggerBeatEffects(intensity = 0.5) {
-    console.log('Triggering beat effects with intensity:', intensity);
-    console.log('Ripple checked:', rippleChk?.checked, 'Color shift checked:', colorShiftChk?.checked, 'Pulse checked:', pulseChk?.checked, 'Lightning checked:', lightningChk?.checked);
     const targetElement = is3DMode ? threeContainer : canvas;
     const isIntense = intensity > 1.0;
     
@@ -266,30 +248,6 @@
       setTimeout(() => {
         targetElement.classList.remove(zoomClass);
       }, duration);
-    }
-    
-    // Ripple effects (if enabled)
-    if (rippleChk && rippleChk.checked) {
-      console.log('Creating ripple effect');
-      createRippleEffect(intensity);
-    }
-    
-    // Color shift effects (if enabled)
-    if (colorShiftChk && colorShiftChk.checked) {
-      console.log('Creating color shift effect');
-      triggerColorShift(intensity);
-    }
-    
-    // Pulse effects (if enabled)
-    if (pulseChk && pulseChk.checked) {
-      console.log('Creating pulse effect');
-      triggerPulseEffect(intensity);
-    }
-    
-    // Lightning effects (if enabled)
-    if (lightningChk && lightningChk.checked) {
-      console.log('Creating lightning effect');
-      createLightningEffect(intensity);
     }
     
     // Particle burst effects (if enabled)
@@ -647,122 +605,6 @@
           particle.parentElement.removeChild(particle);
         }
       }, 800 + Math.random() * 400);
-    }
-  }
-  
-  // Ripple effect system
-  function createRippleEffect(intensity = 0.5) {
-    console.log('Creating ripple effect with intensity:', intensity);
-    if (!particleContainer) {
-      particleContainer = document.createElement('div');
-      particleContainer.className = 'particle-container';
-      const targetElement = is3DMode ? threeContainer : canvas.parentElement;
-      targetElement.style.position = 'relative';
-      targetElement.appendChild(particleContainer);
-      console.log('Created particle container');
-    }
-    
-    const ripple = document.createElement('div');
-    ripple.className = 'ripple-effect';
-    
-    // Position at center
-    const centerX = particleContainer.offsetWidth / 2;
-    const centerY = particleContainer.offsetHeight / 2;
-    
-    ripple.style.left = centerX + 'px';
-    ripple.style.top = centerY + 'px';
-    ripple.style.borderColor = getColorForLevel(Math.random());
-    
-    // Scale based on intensity
-    const scale = 0.5 + intensity;
-    ripple.style.setProperty('--ripple-scale', scale);
-    
-    particleContainer.appendChild(ripple);
-    console.log('Added ripple to particle container');
-    
-    // Trigger animation
-    ripple.classList.add('ripple-animate');
-    
-    // Remove after animation
-    setTimeout(() => {
-      if (ripple.parentElement) {
-        ripple.parentElement.removeChild(ripple);
-      }
-    }, 1000);
-  }
-  
-  // Color shift effect system
-  function triggerColorShift(intensity = 0.5) {
-    const targetElement = is3DMode ? threeContainer : canvas;
-    targetElement.classList.add('color-shift');
-    
-    // Set intensity as CSS variable for animation
-    targetElement.style.setProperty('--color-shift-intensity', intensity);
-    
-    // Remove after a short time
-    setTimeout(() => {
-      targetElement.classList.remove('color-shift');
-    }, 800);
-  }
-  
-  // Pulse effect system
-  function triggerPulseEffect(intensity = 0.5) {
-    const targetElement = is3DMode ? threeContainer : canvas;
-    targetElement.classList.add('pulse-effect');
-    
-    // Set intensity as CSS variable for animation
-    targetElement.style.setProperty('--pulse-intensity', intensity);
-    
-    // Remove after animation
-    setTimeout(() => {
-      targetElement.classList.remove('pulse-effect');
-    }, 600);
-  }
-  
-  // Lightning effect system
-  function createLightningEffect(intensity = 0.5) {
-    if (!particleContainer) {
-      particleContainer = document.createElement('div');
-      particleContainer.className = 'particle-container';
-      const targetElement = is3DMode ? threeContainer : canvas.parentElement;
-      targetElement.style.position = 'relative';
-      targetElement.appendChild(particleContainer);
-    }
-    
-    // Create multiple lightning bolts for more effect
-    const boltCount = Math.max(1, Math.floor(intensity * 3));
-    
-    for (let i = 0; i < boltCount; i++) {
-      const bolt = document.createElement('div');
-      bolt.className = 'lightning-bolt';
-      
-      // Random position
-      const left = Math.random() * particleContainer.offsetWidth;
-      const top = Math.random() * particleContainer.offsetHeight * 0.7;
-      
-      bolt.style.left = left + 'px';
-      bolt.style.top = top + 'px';
-      
-      // Random size based on intensity
-      const height = 50 + Math.random() * 100 * intensity;
-      bolt.style.height = height + 'px';
-      
-      // Random color with blue/white tint
-      const colors = ['#ffffff', '#ffffdd', '#ddddff', '#aaddff'];
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      bolt.style.background = `linear-gradient(to bottom, ${color}, transparent)`;
-      
-      particleContainer.appendChild(bolt);
-      
-      // Trigger animation
-      bolt.classList.add('lightning-animate');
-      
-      // Remove after animation with slight variation
-      setTimeout(() => {
-        if (bolt.parentElement) {
-          bolt.parentElement.removeChild(bolt);
-        }
-      }, 300 + Math.random() * 200);
     }
   }
   
@@ -3002,30 +2844,7 @@
     cameraAnimation.patternTime = 0;
   });
   
-  // Event listeners for new effects
-  rippleChk.addEventListener('change', () => {
-    // No special cleanup needed for ripple effect
-  });
   
-  colorShiftChk.addEventListener('change', () => {
-    // Remove any existing color shift effects when toggling
-    canvas.classList.remove('color-shift');
-    threeContainer.classList.remove('color-shift');
-  });
-  
-  pulseChk.addEventListener('change', () => {
-    // Remove any existing pulse effects when toggling
-    canvas.classList.remove('pulse-effect');
-    threeContainer.classList.remove('pulse-effect');
-  });
-  
-  lightningChk.addEventListener('change', () => {
-    // Clean up lightning particles when disabled
-    if (!lightningChk.checked && particleContainer) {
-      const lightnings = particleContainer.querySelectorAll('.lightning-bolt');
-      lightnings.forEach(lightning => lightning.remove());
-    }
-  });
 
   let peakVelocityMultiplier = 1.0;
 
