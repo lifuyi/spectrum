@@ -41,6 +41,12 @@
   const colorShiftChk = document.getElementById('color-shift');
   const pulseChk = document.getElementById('pulse');
   const lightningChk = document.getElementById('lightning');
+  
+  // Debug logs
+  console.log('Ripple checkbox:', rippleChk);
+  console.log('Color shift checkbox:', colorShiftChk);
+  console.log('Pulse checkbox:', pulseChk);
+  console.log('Lightning checkbox:', lightningChk);
 
   // Audio
   let audioContext = null;
@@ -195,6 +201,7 @@
 
   // Beat Glow and All Effects
   function triggerBeatEffects(intensity = 0.5) {
+    console.log('Triggering beat effects with intensity:', intensity);
     const targetElement = is3DMode ? threeContainer : canvas;
     const isIntense = intensity > 1.0;
     
@@ -636,12 +643,14 @@
   
   // Ripple effect system
   function createRippleEffect(intensity = 0.5) {
+    console.log('Creating ripple effect with intensity:', intensity);
     if (!particleContainer) {
       particleContainer = document.createElement('div');
       particleContainer.className = 'particle-container';
       const targetElement = is3DMode ? threeContainer : canvas.parentElement;
       targetElement.style.position = 'relative';
       targetElement.appendChild(particleContainer);
+      console.log('Created particle container');
     }
     
     const ripple = document.createElement('div');
@@ -660,6 +669,7 @@
     ripple.style.setProperty('--ripple-scale', scale);
     
     particleContainer.appendChild(ripple);
+    console.log('Added ripple to particle container');
     
     // Trigger animation
     ripple.classList.add('ripple-animate');
