@@ -56,6 +56,12 @@
 - Midnight
 - Custom Theme Creator
 
+### Theme Effects Visibility
+- All non-classic themes now show obvious visual effects by default
+- Theme-specific effects (glows, blurs, background patterns) are always visible
+- Background patterns are now visible for all themes except Classic
+- Canvas effects (neon glows, blurs, etc.) are applied regardless of the "Effects" toggle
+
 ## Effects
 - **Grid**: Toggle background grid visibility
 - **Bars**: Toggle bar visualization visibility

@@ -26,6 +26,9 @@
 - Use the **Theme** dropdown to change the color scheme
 - Available themes include Classic, Neon Glow, Ocean Depths, Fire Storm, and more
 - Create custom themes using the **Create Theme** button
+- All non-classic themes now show obvious visual effects by default
+- Theme-specific effects (glows, blurs, background patterns) are always visible
+- Background patterns are now visible for all themes except Classic
 
 ## Effect Toggles
 
@@ -127,6 +130,11 @@ Toggle various visual effects on/off:
 - Check that "Bars" toggle is enabled for bar visualizations
 - Ensure audio is playing
 - Verify browser compatibility (requires modern browser with Web Audio API)
+
+### Theme Effects Not Visible
+- Theme-specific effects are now always visible for non-classic themes
+- Background patterns should be visible for all themes except Classic
+- If effects are still not visible, try refreshing the page
 
 ## Browser Compatibility
 
