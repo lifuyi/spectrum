@@ -180,12 +180,16 @@
     // Use configurable threshold
     const threshold = beatSensitivityEl ? parseFloat(beatSensitivityEl.value) : beatDetection.threshold;
     
+    console.log('Beat detection - Current energy:', currentEnergy, 'Average energy:', averageEnergy, 'Threshold:', threshold);
+    
     if (currentEnergy > averageEnergy * threshold && 
         timeSinceLastBeat > beatDetection.minInterval) {
       beatDetection.lastBeat = now;
       
       // Calculate beat intensity (how much stronger than average)
       const intensity = Math.min(2, (currentEnergy / averageEnergy) - 1);
+      
+      console.log('Beat detected with intensity:', intensity);
       
       // Track intensity history for shake effects
       beatDetection.intensityHistory.push(intensity);
@@ -202,6 +206,7 @@
   // Beat Glow and All Effects
   function triggerBeatEffects(intensity = 0.5) {
     console.log('Triggering beat effects with intensity:', intensity);
+    console.log('Ripple checked:', rippleChk?.checked, 'Color shift checked:', colorShiftChk?.checked, 'Pulse checked:', pulseChk?.checked, 'Lightning checked:', lightningChk?.checked);
     const targetElement = is3DMode ? threeContainer : canvas;
     const isIntense = intensity > 1.0;
     
@@ -265,21 +270,25 @@
     
     // Ripple effects (if enabled)
     if (rippleChk && rippleChk.checked) {
+      console.log('Creating ripple effect');
       createRippleEffect(intensity);
     }
     
     // Color shift effects (if enabled)
     if (colorShiftChk && colorShiftChk.checked) {
+      console.log('Creating color shift effect');
       triggerColorShift(intensity);
     }
     
     // Pulse effects (if enabled)
     if (pulseChk && pulseChk.checked) {
+      console.log('Creating pulse effect');
       triggerPulseEffect(intensity);
     }
     
     // Lightning effects (if enabled)
     if (lightningChk && lightningChk.checked) {
+      console.log('Creating lightning effect');
       createLightningEffect(intensity);
     }
     
