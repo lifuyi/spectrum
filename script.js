@@ -31,6 +31,8 @@
   const resetEqBtn = document.getElementById('reset-eq');
   const peakSecondsEl = document.getElementById('peak-seconds');
   const peakSecondsValEl = document.getElementById('peak-seconds-val');
+  const peakVelocityEl = document.getElementById('peak-velocity');
+  const peakVelocityValEl = document.getElementById('peak-velocity-val');
   const beatSensitivityEl = document.getElementById('beat-sensitivity');
   const beatSensitivityValEl = document.getElementById('beat-sensitivity-val');
 
@@ -1563,19 +1565,22 @@
     
     if (!theme) return;
     
-    // Apply canvas effects
+    // Apply canvas effects - always apply theme-specific effects
     canvas.className = '';
     threeContainer.className = '';
-    if (effectsChk.checked && theme.canvasClass) {
+    
+    // Always apply theme-specific canvas effects for non-classic themes
+    if (theme.canvasClass && themeName !== 'classic') {
       canvas.classList.add(theme.canvasClass);
       threeContainer.classList.add(theme.canvasClass);
     }
     
-    // Apply background patterns
+    // Apply background patterns - always show theme-specific background patterns for non-classic themes
     const bgPattern = document.getElementById('bg-pattern');
     if (bgPattern) {
       bgPattern.className = 'bg-pattern';
-      if (effectsChk.checked && themeName !== 'classic') {
+      // Always show background patterns for non-classic themes (regardless of effects checkbox)
+      if (themeName !== 'classic') {
         bgPattern.classList.add(themeName);
       }
     }
@@ -1748,10 +1753,17 @@
     const w = dims.width;
     const h = dims.height;
 
-    // Use the current theme's background color instead of hardcoded BG_COLOR
+    // Use transparent background for non-classic themes
+    // This allows the background pattern to show through
     const currentThemeObj = themes[currentTheme] || themes.classic;
-    ctx.fillStyle = currentThemeObj.bgColor || BG_COLOR;
-    ctx.fillRect(0, 0, w, h);
+    if (currentTheme !== 'classic') {
+      // Clear the canvas with transparent background for non-classic themes
+      ctx.clearRect(0, 0, w, h);
+    } else {
+      // Use solid background color only for classic theme
+      ctx.fillStyle = currentThemeObj.bgColor || BG_COLOR;
+      ctx.fillRect(0, 0, w, h);
+    }
 
     drawGrid(levels.length);
 
@@ -2832,6 +2844,8 @@
     cameraAnimation.patternTime = 0;
   });
 
+  let peakVelocityMultiplier = 1.0;
+
   function updatePeakDecayFromSeconds() {
     const seconds = parseFloat(peakSecondsEl.value);
     if (seconds === -1) {
@@ -2840,10 +2854,21 @@
     } else {
       peakSecondsValEl.textContent = `${seconds.toFixed(1)}s`;
       const fps = 60;
-      PEAK_DECAY_PER_FRAME = 1 / Math.max(1, seconds * fps);
+      // Calculate base decay rate and apply velocity multiplier
+      const baseDecay = 1 / Math.max(1, seconds * fps);
+      PEAK_DECAY_PER_FRAME = baseDecay * peakVelocityMultiplier;
     }
   }
+  
+  function updatePeakVelocity() {
+    peakVelocityMultiplier = parseFloat(peakVelocityEl.value);
+    peakVelocityValEl.textContent = peakVelocityMultiplier.toFixed(1);
+    // Update the decay rate with the new velocity
+    updatePeakDecayFromSeconds();
+  }
+  
   peakSecondsEl.addEventListener('input', updatePeakDecayFromSeconds);
+  peakVelocityEl.addEventListener('input', updatePeakVelocity);
   
   function updateBeatSensitivity() {
     const sensitivity = parseFloat(beatSensitivityEl.value);
@@ -3403,6 +3428,7 @@
   resetBarLevels();
   drawSpectrum(new Float32Array(NUM_BANDS));
   updatePeakDecayFromSeconds();
+  updatePeakVelocity(); // Initialize peak velocity controller
   updateBeatSensitivity();
   removeUnwantedThemes(); // Remove unwanted themes before loading
   loadCustomThemes(); // Load saved custom themes
