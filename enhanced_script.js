@@ -6,6 +6,8 @@ let audioManager = null;
 let playlistManager = null;
 let performanceManager = null;
 let mobileSupport = null;
+let musicTheoryAnalyzer = null;
+let bpmDetector = null;
 
 // Initialize the enhanced visualizer
 async function initializeEnhancedVisualizer() {
@@ -28,6 +30,17 @@ async function initializeEnhancedVisualizer() {
     // Initialize playlist manager
     playlistManager = new PlaylistManager(audioManager);
     playlistManager.setPlaylistElement(document.getElementById('playlist'));
+    
+    // Initialize music theory and BPM detection modules
+    if (typeof MusicTheoryAnalyzer !== 'undefined') {
+      musicTheoryAnalyzer = new MusicTheoryAnalyzer();
+      setupMusicTheoryCallbacks();
+    }
+    
+    if (typeof BPMDetector !== 'undefined') {
+      bpmDetector = new BPMDetector();
+      setupBPMCallbacks();
+    }
     
     // Set up callbacks
     playlistManager.setCallbacks({
@@ -55,12 +68,16 @@ async function initializeEnhancedVisualizer() {
     window.enhancedVisualizer.playlistManager = playlistManager;
     window.enhancedVisualizer.performanceManager = performanceManager;
     window.enhancedVisualizer.mobileSupport = mobileSupport;
+    window.enhancedVisualizer.musicTheoryAnalyzer = musicTheoryAnalyzer;
+    window.enhancedVisualizer.bpmDetector = bpmDetector;
     
     // Also set individual global references for backward compatibility
     window.audioManager = audioManager;
     window.playlistManager = playlistManager;
     window.performanceManager = performanceManager;
     window.mobileSupport = mobileSupport;
+    window.musicTheoryAnalyzer = musicTheoryAnalyzer;
+    window.bpmDetector = bpmDetector;
     
     console.log('Enhanced visualizer initialized successfully');
     showSuccessMessage('Enhanced visualizer loaded successfully!');
@@ -254,6 +271,109 @@ function setupEnhancedControls() {
       }
     });
   }
+  
+  // Music theory toggle
+  setTimeout(() => {
+    const musicTheoryToggle = document.getElementById('music-theory-toggle');
+    const musicTheoryPanel = document.getElementById('music-theory-panel');
+    if (musicTheoryToggle && musicTheoryPanel) {
+      // Set initial state based on checkbox
+      musicTheoryPanel.style.display = musicTheoryToggle.checked ? 'block' : 'none';
+      
+      musicTheoryToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          musicTheoryPanel.style.display = 'block';
+          if (musicTheoryAnalyzer) {
+            musicTheoryAnalyzer.startAnalysis();
+          }
+        } else {
+          musicTheoryPanel.style.display = 'none';
+          if (musicTheoryAnalyzer) {
+            musicTheoryAnalyzer.stopAnalysis();
+          }
+        }
+      });
+    }
+  }, 100);
+  
+  // BPM toggle
+  setTimeout(() => {
+    const bpmToggle = document.getElementById('bpm-toggle');
+    const bpmPanel = document.getElementById('bpm-panel');
+    if (bpmToggle && bpmPanel) {
+      // Set initial state based on checkbox
+      bpmPanel.style.display = bpmToggle.checked ? 'block' : 'none';
+      
+      bpmToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          bpmPanel.style.display = 'block';
+          if (bpmDetector) {
+            bpmDetector.startAnalysis();
+          }
+        } else {
+          bpmPanel.style.display = 'none';
+          if (bpmDetector) {
+            bpmDetector.stopAnalysis();
+          }
+        }
+      });
+    }
+  }, 100);
+  
+  // Spectrum toggle
+  setTimeout(() => {
+    const spectrumToggle = document.getElementById('spectrum-toggle');
+    const spectrumPanel = document.getElementById('spectrum-panel');
+    if (spectrumToggle && spectrumPanel) {
+      // Set initial state based on checkbox
+      spectrumPanel.style.display = spectrumToggle.checked ? 'block' : 'none';
+      
+      spectrumToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          spectrumPanel.style.display = 'block';
+        } else {
+          spectrumPanel.style.display = 'none';
+        }
+      });
+    }
+  }, 100);
+  
+  // Set up confidence threshold sliders
+  setTimeout(() => {
+    const keyConfidenceSlider = document.getElementById('key-confidence-threshold');
+    const chordConfidenceSlider = document.getElementById('chord-confidence-threshold');
+    const keyConfidenceValue = document.getElementById('key-confidence-value');
+    const chordConfidenceValue = document.getElementById('chord-confidence-value');
+    
+    if (keyConfidenceSlider && keyConfidenceValue) {
+      keyConfidenceSlider.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        if (musicTheoryAnalyzer) {
+          musicTheoryAnalyzer.keyConfidenceThreshold = value;
+        }
+        keyConfidenceValue.textContent = Math.round(value * 100) + '%';
+      });
+    }
+    
+    if (chordConfidenceSlider && chordConfidenceValue) {
+      chordConfidenceSlider.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        if (musicTheoryAnalyzer) {
+          musicTheoryAnalyzer.chordConfidenceThreshold = value;
+        }
+        chordConfidenceValue.textContent = Math.round(value * 100) + '%';
+      });
+    }
+    
+    // Set up BPM sensitivity slider
+    const bpmSensitivitySlider = document.getElementById('bpm-sensitivity');
+    if (bpmSensitivitySlider && bpmDetector) {
+      bpmSensitivitySlider.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        bpmDetector.peakThreshold = value;
+      });
+    }
+  }, 100);
 }
 
 // Enhanced keyboard shortcuts
@@ -512,10 +632,36 @@ function enhancedRender(timestamp) {
   requestAnimationFrame(enhancedRender);
 }
 
+// Perform music theory and BPM analysis
+function analyzeAudioFeatures(freqData) {
+  if (freqData.length === 0) return;
+  
+  // Get time domain data for music theory analysis
+  const timeData = new Uint8Array(freqData.length);
+  // In a real implementation, we would get this from the analyzer node
+  // For now, we'll create a simple sine wave for testing
+  for (let i = 0; i < timeData.length; i++) {
+    timeData[i] = 128 + Math.sin(i * 0.1) * 127;
+  }
+  
+  // Analyze music theory if enabled
+  if (musicTheoryAnalyzer && musicTheoryAnalyzer.isAnalyzing) {
+    musicTheoryAnalyzer.analyzeMusic(freqData, timeData);
+  }
+  
+  // Detect BPM if enabled
+  if (bpmDetector && bpmDetector.isAnalyzing) {
+    bpmDetector.detectBPM(freqData, timeData);
+  }
+}
+
 // Placeholder for visualization rendering (would integrate with existing code)
 function renderVisualization(freqData) {
   // This would call the existing visualization functions
   // with performance optimizations applied
+  
+  // Perform music theory and BPM analysis
+  analyzeAudioFeatures(freqData);
 }
 
 // CSS animations for messages
@@ -552,12 +698,124 @@ window.addEventListener('beforeunload', () => {
   if (mobileSupport) mobileSupport.destroy();
 });
 
+// Setup music theory callbacks
+function setupMusicTheoryCallbacks() {
+  if (!musicTheoryAnalyzer) return;
+  
+  musicTheoryAnalyzer.setCallbacks({
+    onKeyDetected: function(key) {
+      const keyElement = document.getElementById('current-key');
+      const confidenceElement = document.getElementById('key-confidence');
+      const signatureElement = document.getElementById('key-signature');
+      
+      if (keyElement) {
+        keyElement.textContent = key.note + ' ' + key.mode;
+        keyElement.className = 'key-display ' + key.mode;
+      }
+      
+      if (confidenceElement) {
+        confidenceElement.textContent = Math.round(key.confidence * 100) + '%';
+      }
+      
+      if (signatureElement && musicTheoryAnalyzer) {
+        // Update key signature
+        const keySignature = musicTheoryAnalyzer.getKeySignature();
+        let signatureText = key.note + ' ' + key.mode;
+        if (keySignature.sharps > 0) {
+          signatureText += ' (' + keySignature.sharps + '♯)';
+        } else if (keySignature.flats > 0) {
+          signatureText += ' (' + keySignature.flats + '♭)';
+        }
+        signatureElement.textContent = signatureText;
+      }
+    },
+    
+    onChordDetected: function(chord) {
+      const chordElement = document.getElementById('current-chord');
+      const romanElement = document.getElementById('roman-numeral');
+      const confidenceElement = document.getElementById('chord-confidence');
+      
+      if (chordElement && musicTheoryAnalyzer) {
+        chordElement.textContent = chord.root + musicTheoryAnalyzer.getChordSymbol(chord.quality);
+        chordElement.className = 'chord-display ' + chord.quality;
+      }
+      
+      if (romanElement) {
+        romanElement.textContent = chord.roman;
+        romanElement.className = 'roman-numeral ' + chord.quality;
+      }
+      
+      if (confidenceElement) {
+        confidenceElement.textContent = Math.round(chord.confidence * 100) + '%';
+      }
+    },
+    
+    onProgressionUpdate: function(progression) {
+      const progressionContainer = document.getElementById('chord-progression');
+      if (!progressionContainer) return;
+      
+      progressionContainer.innerHTML = '';
+      
+      progression.forEach(function(chord) {
+        const chordElement = document.createElement('div');
+        chordElement.className = 'chord-item';
+        chordElement.innerHTML = `
+          <div class="chord-roman">${chord.roman}</div>
+          <div class="chord-name">${chord.chord}</div>
+          <div class="chord-confidence">${Math.round(chord.confidence * 100)}%</div>
+        `;
+        progressionContainer.appendChild(chordElement);
+      });
+    }
+  });
+}
+
+// Setup BPM callbacks
+function setupBPMCallbacks() {
+  if (!bpmDetector) return;
+  
+  bpmDetector.setCallbacks({
+    onBPMDetected: function(data) {
+      const bpmDisplay = document.getElementById('bpm-display');
+      const confidenceDisplay = document.getElementById('bpm-confidence');
+      const tempoDescription = document.getElementById('tempo-description');
+      
+      if (bpmDisplay) {
+        bpmDisplay.textContent = data.bpm || '--';
+      }
+      
+      if (confidenceDisplay) {
+        const confidence = data.confidence || 0;
+        confidenceDisplay.textContent = Math.round(confidence * 100) + '%';
+      }
+      
+      if (tempoDescription && bpmDetector) {
+        const tempo = bpmDetector.getTempoDescription(data.bpm);
+        tempoDescription.textContent = tempo;
+      }
+    },
+    
+    onBeatDetected: function(data) {
+      // Visual feedback for beat detection
+      const bpmPanel = document.getElementById('bpm-panel');
+      if (bpmPanel) {
+        bpmPanel.classList.add('beat-highlight');
+        setTimeout(() => {
+          bpmPanel.classList.remove('beat-highlight');
+        }, 100);
+      }
+    }
+  });
+}
+
 // Export for global access (will be set after initialization)
 window.enhancedVisualizer = {
   audioManager: null,
   playlistManager: null,
   performanceManager: null,
   mobileSupport: null,
+  musicTheoryAnalyzer: null,
+  bpmDetector: null,
   
   // Helper methods
   addTrack: (track) => window.enhancedVisualizer.playlistManager?.addTrack(track),

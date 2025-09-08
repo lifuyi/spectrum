@@ -1,99 +1,81 @@
-# Winamp-Style Spectrum Visualizer Features
+# Enhanced Winamp Visualizer Features
 
-## Visualization Modes
+## Core Visualization
+- 2D Bars, Mountain, Spikes, Circles, Waveform, Radial, Circular Waveform, Particles, Spectrogram
+- 3D Bars, Sphere, Tunnel, Waves, Cube Matrix, Spiral, Galaxy, DNA Helix
+- Classic color ramp with LED segments
+- Peak-hold functionality
+- 20-band log spectrum
 
-### 2D Modes
-- **Bars**: Classic Winamp-style LED bar visualization with peak indicators
-- **Mountain**: Smooth mountain-like visualization with curved peaks
-- **Spikes**: Thin vertical lines representing frequency intensities
-- **Circles**: Circular arrangement of frequency indicators
-- **Waveform**: Audio waveform visualization
-- **Radial**: Radial bar visualization
-- **Circular Waveform**: Circular audio spectrum visualization with concentric waveforms
-- **Particles**: Particle-based visualization
-- **Spectrogram**: Time-based frequency visualization showing frequency changes over time
+## Audio Input
+- File loading (MP3, WAV, OGG, etc.)
+- URL streaming
+- Microphone input
+- Playlist management with shuffle and repeat
 
-### 3D Modes
-- **3D Bars**: Three-dimensional bar visualization
-- **3D Sphere**: Spherical particle visualization
-- **3D Tunnel**: Tunnel effect with particles
-- **3D Waves**: Wave-like surface visualization
-- **3D Cube Matrix**: Grid of 3D cubes
-- **3D Spiral**: Spiral arrangement of particles
-- **3D Galaxy**: Galaxy-like particle arrangement
-- **3D DNA Helix**: Double helix particle visualization
+## Advanced Audio Analysis
+### Music Theory Analysis
+- Key detection (all 24 major and minor keys)
+- Chord detection (triads, 7th chords, extended chords)
+- Roman numeral analysis
+- Chord progression tracking
+- Confidence threshold controls
+- Key signature information
 
-## Bar Style Options
+### BPM Detection
+- Energy-based beat detection
+- BPM calculation with smoothing
+- Confidence scoring
+- Tempo description
+- Sensitivity adjustment
 
-### LED Style (Classic)
-- Segmented bar visualization with distinct colored segments
-- Each segment represents a portion of the frequency intensity
-- Colors transition from green (low) to yellow (mid) to red (high)
-- Authentic recreation of the classic Winamp spectrum analyzer
+### Spectrum Analysis
+- Dominant frequency detection
+- Musical note mapping
+- Frequency band analysis
+- Peak detection
+- Spectral features
 
-### Linear Gradient Style
-- Smooth gradient bars with fading effect
-- Single continuous bar per frequency band
-- Color transitions smoothly from theme colors
-- Modern look with subtle transparency effects
+## Visual Effects
+- Beat detection with multiple effect types:
+  - Shake Mode (subtle and intense)
+  - Beat Flash
+  - Beat Zoom
+  - Particle Burst
+  - Particle Trails
+  - Particle Fountain
+  - Fireworks
+- 3D Camera Dance patterns (Random, Orbital, Spiral, Figure 8, Pendulum)
+- Low Power Mode for performance optimization
+- Theme system with 10 presets and custom theme creator
 
-### Plain Linear Gradient Style
-- Smooth gradient bars without transparency
-- Single continuous bar per frequency band
-- Color transitions from darker to lighter theme colors
-- Clean, solid appearance without fading edges
+## User Interface
+- Responsive design for all screen sizes
+- Keyboard shortcuts for all major functions
+- Equalizer with 20-band control
+- Volume control
+- Performance indicator (FPS, Memory usage)
+- Mobile support with touch controls
+- Fullscreen mode
+- Screenshot saving
 
-## Themes
-- Classic Winamp
-- Neon Glow
-- Ocean Depths
-- Fire Storm
-- Matrix Code
-- Synthwave
-- Aurora
-- Plasma
-- Rainbow
-- Midnight
-- Custom Theme Creator
+## Advanced Controls
+- Crossfade control with configurable duration and curves
+- Peak hold time and velocity adjustment
+- Beat sensitivity control
+- Bar style selection (LED, Gradient, Plain)
+- Toggle controls for all visualization elements
 
-### Theme Effects Visibility
-- All non-classic themes now show obvious visual effects by default
-- Theme-specific effects (glows, blurs, background patterns) are always visible
-- Background patterns are now visible for all themes except Classic
-- Canvas effects (neon glows, blurs, etc.) are applied regardless of the "Effects" toggle
+## Playlist Management
+- Add/remove tracks
+- Shuffle and repeat modes
+- Track information display
+- Save/load playlists
+- Drag and drop support
 
-## Effects
-- **Grid**: Toggle background grid visibility
-- **Bars**: Toggle bar visualization visibility
-- **Peaks**: Toggle peak indicators
-- **Shake Mode**: Screen shake on beats
-- **Beat Flash**: Screen flash on beats
-- **Beat Zoom**: Screen zoom on beats
-- **Particle Burst**: Particle effects on beats
-- **Particle Trails**: Rising particle trails
-- **Particle Fountain**: Fountain particle effect
-- **Fireworks**: Fireworks explosion effects
-- **3D Camera Dance**: Dynamic camera movement in 3D modes
-- **Low Power Mode**: Reduced frame rate for better performance
-
-## Audio Controls
-- Load local audio files
-- Stream audio from URLs
-- Use microphone input
-- Play/Pause controls
-- 20-band equalizer with preset controls
-- Playlist management for multiple tracks
-
-## Additional Features
-- **Screenshot Capture**: Save visualizations as PNG images
-- **Fullscreen Mode**: Toggle fullscreen display
-- **Keyboard Shortcuts**: Quick access to common functions
-- **Performance Optimization**: Frame rate limiting and low power mode
-
-## Customization
-- Theme creator with color pickers
-- Theme import/export functionality
-- Peak hold time adjustment
-- Beat sensitivity controls
-- Effect toggles
-- Camera movement patterns for 3D modes
+## Technical Features
+- Modular architecture
+- Performance monitoring and optimization
+- Memory management
+- Error handling and validation
+- Cross-browser compatibility

@@ -112,6 +112,14 @@
         <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="100" title="Volume">
         <span id="volume-value">100%</span>
       </div>
+      
+      <!-- Advanced Features Controls -->
+      <div class="advanced-controls">
+        <label><input id="bpm-toggle" type="checkbox" checked> BPM Detection</label>
+        <label><input id="spectrum-toggle" type="checkbox"> Spectrum Analysis</label>
+        <label><input id="music-theory-toggle" type="checkbox"> Music Theory</label>
+        <button id="crossfade-btn" class="btn" title="Crossfade to Next Track">Crossfade</button>
+      </div>
     </div>
   </header>
   
@@ -141,6 +149,144 @@
       <label><input id="eq-enable" type="checkbox" checked> Enable</label>
     </div>
     <div class="eq-sliders" id="eq-sliders"></div>
+  </section>
+
+  <!-- Advanced Features Panels -->
+  <section class="advanced-panels">
+    <!-- BPM Detection Panel -->
+    <div id="bpm-panel" class="bpm-panel">
+      <h3>BPM Detection</h3>
+      <div class="bpm-display-container">
+        <div class="bpm-main">
+          <span class="bpm-label">BPM:</span>
+          <span id="bpm-display" class="bpm-value">--</span>
+        </div>
+        <div class="bpm-details">
+          <div class="bpm-confidence">
+            <span>Confidence: </span>
+            <span id="bpm-confidence">--%</span>
+          </div>
+          <div class="tempo-description">
+            <span>Tempo: </span>
+            <span id="tempo-description">Unknown</span>
+          </div>
+        </div>
+      </div>
+      <div class="bpm-controls">
+        <label>Sensitivity:
+          <input type="range" id="bpm-sensitivity" min="0.1" max="1.0" step="0.1" value="0.3">
+        </label>
+      </div>
+    </div>
+
+    <!-- Crossfade Panel -->
+    <div class="crossfade-panel">
+      <h3>Crossfade Control</h3>
+      <div class="crossfade-controls">
+        <label>Duration:
+          <select id="crossfade-duration">
+            <option value="1000">1 second</option>
+            <option value="2000">2 seconds</option>
+            <option value="3000" selected>3 seconds</option>
+            <option value="5000">5 seconds</option>
+            <option value="8000">8 seconds</option>
+          </select>
+        </label>
+        <label>Curve:
+          <select id="crossfade-curve">
+            <option value="linear" selected>Linear</option>
+            <option value="exponential">Exponential</option>
+            <option value="logarithmic">Logarithmic</option>
+            <option value="smooth">Smooth</option>
+          </select>
+        </label>
+      </div>
+      <div class="crossfade-progress-container">
+        <div class="crossfade-progress-bar">
+          <div id="crossfade-progress" class="crossfade-progress"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spectrum Analysis Panel -->
+    <div id="spectrum-panel" class="spectrum-panel">
+      <h3>Spectrum Analysis</h3>
+      
+      <div class="spectrum-controls">
+        <label>Detail Level:
+          <select id="spectrum-detail">
+            <option value="normal" selected>Normal (30 FPS)</option>
+            <option value="high">High (60 FPS)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="spectrum-info">
+        <div class="dominant-frequency">
+          <span>Dominant: </span>
+          <span id="dominant-frequency">-- Hz</span>
+          <span id="musical-note" class="musical-note"></span>
+        </div>
+      </div>
+
+      <div class="frequency-bands" id="frequency-bands"></div>
+      
+      <div class="frequency-peaks-container">
+        <h4>Frequency Peaks</h4>
+        <div id="frequency-peaks" class="frequency-peaks"></div>
+      </div>
+      
+      <div class="spectral-features-container">
+        <h4>Spectral Features</h4>
+        <div id="spectral-features" class="spectral-features"></div>
+      </div>
+    </div>
+
+    <!-- Music Theory Analysis Panel -->
+    <div id="music-theory-panel" class="music-theory-panel">
+      <h3>Music Theory Analysis</h3>
+      
+      <div class="music-theory-controls">
+        <label>Key Confidence:
+          <input type="range" id="key-confidence-threshold" min="0.3" max="0.9" step="0.1" value="0.6">
+          <span id="key-confidence-value">60%</span>
+        </label>
+        <label>Chord Confidence:
+          <input type="range" id="chord-confidence-threshold" min="0.3" max="0.8" step="0.1" value="0.5">
+          <span id="chord-confidence-value">50%</span>
+        </label>
+      </div>
+
+      <div class="key-analysis">
+        <h4>Current Key</h4>
+        <div class="key-info">
+          <div class="key-display-container">
+            <span id="current-key" class="key-display major">C major</span>
+            <span id="key-confidence" class="confidence-indicator">--%</span>
+          </div>
+          <div class="key-signature">
+            <span>Key Signature: </span>
+            <span id="key-signature">C major / A minor</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chord-analysis">
+        <h4>Current Chord</h4>
+        <div class="chord-info">
+          <div class="chord-display-container">
+            <span id="current-chord" class="chord-display major">C</span>
+            <span id="roman-numeral" class="roman-numeral major">I</span>
+            <span id="chord-confidence" class="confidence-indicator">--%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="progression-analysis">
+        <h4>Chord Progression</h4>
+        <div id="chord-progression" class="chord-progression"></div>
+      </div>
+    </div>
   </section>
   
   <footer>

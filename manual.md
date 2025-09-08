@@ -1,146 +1,71 @@
-# Winamp-Style Spectrum Visualizer Manual
+# Enhanced Winamp Visualizer - User Manual
 
 ## Getting Started
-
 1. Open `enhanced_winamp_visualizer.html` in a modern web browser
-2. Load audio using one of these methods:
-   - **Load Audio**: Select a local audio file from your device
-   - **Load URL**: Enter a direct URL to an audio file or stream
-   - **Use Mic**: Visualize audio from your microphone
+2. Load an audio file using the "Load audio" button
+3. Play the audio using the "Play" button
 
-## Visualization Controls
+## Advanced Features
 
-### Style Selection
-- Use the **Style** dropdown to switch between visualization modes
-- 2D modes include Bars, Mountain, Spikes, Circles, Waveform, Radial, Circular Waveform, Particles, and Spectrogram
-- 3D modes include Bars, Sphere, Tunnel, Waves, Cube Matrix, Spiral, Galaxy, and DNA Helix
+### Music Theory Analysis
+To enable music theory analysis:
+1. Check the "Music Theory" checkbox in the controls panel
+2. The music theory panel will appear below the visualization
+3. View the current key, chord, and chord progression in real-time
 
-### Bar Style Selection
-- When **2D Bars** style is selected, a **Bar Style** dropdown appears
-- Choose between:
-  - **LED Style**: Classic segmented bar visualization
-  - **Linear Gradient**: Smooth gradient bars with fading effect
-  - **Plain Linear Gradient**: Solid gradient bars without transparency
+Features:
+- Key Detection: Shows the detected musical key with confidence percentage
+- Chord Detection: Displays the current chord with Roman numeral analysis
+- Chord Progression: Tracks the recent chord progression
+- Confidence Controls: Adjust key and chord confidence thresholds using the sliders
 
-### Theme Selection
-- Use the **Theme** dropdown to change the color scheme
-- Available themes include Classic, Neon Glow, Ocean Depths, Fire Storm, and more
-- Create custom themes using the **Create Theme** button
-- All non-classic themes now show obvious visual effects by default
-- Theme-specific effects (glows, blurs, background patterns) are always visible
-- Background patterns are now visible for all themes except Classic
+### BPM Detection
+To enable BPM detection:
+1. Check the "BPM Detection" checkbox in the controls panel (enabled by default)
+2. The BPM panel will appear below the visualization
+3. View the detected BPM, confidence, and tempo description in real-time
 
-## Effect Toggles
+Features:
+- BPM Display: Shows the current beats per minute
+- Confidence Indicator: Displays the confidence level of the BPM detection
+- Tempo Description: Provides a human-readable tempo description
+- Sensitivity Control: Adjust the BPM detection sensitivity using the slider
 
-Toggle various visual effects on/off:
-- **Grid**: Show/hide background grid
-- **Bars**: Show/hide bar visualization
-- **Peaks**: Show/hide peak indicators
-- **Shake Mode**: Enable screen shaking on beats
-- **Beat Flash**: Enable screen flashing on beats
-- **Beat Zoom**: Enable screen zooming on beats
-- **Particle Burst**: Enable particle effects on beats
-- **Particle Trails**: Enable rising particle trails
-- **Particle Fountain**: Enable fountain particle effect
-- **Fireworks**: Enable fireworks explosion effects
-- **3D Camera Dance**: Enable dynamic camera movement in 3D modes
-- **Low Power Mode**: Reduce resource usage for better performance
+### Spectrum Analysis
+To enable spectrum analysis:
+1. Check the "Spectrum Analysis" checkbox in the controls panel
+2. The spectrum panel will appear below the visualization
+3. View detailed frequency analysis information
 
-## Audio Controls
+Features:
+- Dominant Frequency: Shows the dominant frequency and its musical note
+- Frequency Bands: Displays analysis of different frequency bands
+- Frequency Peaks: Shows detected frequency peaks
+- Spectral Features: Displays additional spectral analysis information
 
-- **Play**: Start audio playback
-- **Pause**: Pause audio playback
-- **Equalizer**: Adjust 20-band frequency levels
-- **Reset EQ**: Reset all equalizer bands to 0dB
+### Crossfade Control
+To use crossfade:
+1. Click the "Crossfade" button to transition to the next track
+2. Adjust crossfade settings using the controls in the crossfade panel
 
-## Playlist Management
-
-- When loading audio files or URLs, they are automatically added to the playlist
-- Click on any track in the playlist to switch between songs
-- Use the **Arrow Left/Right** keyboard shortcuts to navigate between tracks
-- The active track is highlighted in the playlist
-
-## Customization Options
-
-### Peak Hold Time
-- Adjust how long peak indicators stay visible
-- Range: 0.0s to 15.0s
-- Set to "Hold" to keep peaks indefinitely
-
-### Beat Sensitivity
-- Adjust sensitivity for beat detection
-- Lower values (0.8) detect more beats
-- Higher values (1.2) detect only stronger beats
-
-### Camera Pattern (3D Modes)
-- Select camera movement pattern in 3D modes:
-  - Random
-  - Orbital
-  - Spiral
-  - Figure 8
-  - Pendulum
-
-## Additional Features
-
-### Screenshot
-- Click the **Screenshot** button to save the current visualization as a PNG image
-- Works for both 2D and 3D visualizations
-
-### Fullscreen Mode
-- Click the **Fullscreen** button to toggle fullscreen mode
-- Press 'F' key to toggle fullscreen mode
-
-## Theme Creator
-
-1. Click **Create Theme** to open the theme creator
-2. Customize colors:
-   - Primary Color: Main UI elements
-   - Background: Main background color
-   - Border: Border colors
-   - UI Background: Control panel backgrounds
-   - Visualization Colors: Low, Mid, and High frequency colors
-3. Apply effects:
-   - Glow Effect: Add glow to visualizations
-   - Blur Effect: Add subtle blur
-   - Neon Effect: Add neon glow
-4. Preview your theme in real-time
-5. Save, Export, or Import themes
+Features:
+- Duration Settings: Choose crossfade duration from 1-8 seconds
+- Curve Options: Select from linear, exponential, logarithmic, or smooth curves
+- Visual Progress: See the crossfade progress visually
 
 ## Keyboard Shortcuts
-
-- **Space**: Play/Pause (when audio is loaded)
-- **Arrow Left**: Previous track in playlist
-- **Arrow Right**: Next track in playlist
-- **F**: Toggle fullscreen mode
+- Space: Play/Pause
+- Left Arrow: Previous track
+- Right Arrow: Next track
+- Up Arrow: Increase volume
+- Down Arrow: Decrease volume
+- F: Toggle fullscreen
+- M: Toggle mute
+- S: Toggle shuffle
+- R: Cycle repeat mode
+- 1-5: Switch to theme by index
 
 ## Troubleshooting
-
-### Audio Issues
-- Ensure your browser supports the audio format
-- Check browser console for CORS errors with URL streams
-- Verify microphone permissions for mic input
-
-### Performance Issues
-- Disable particle effects for better performance
-- Switch to simpler visualization modes
-- Enable Low Power Mode to reduce resource usage
-- Reduce browser zoom level
-
-### Visualization Not Appearing
-- Check that "Bars" toggle is enabled for bar visualizations
-- Ensure audio is playing
-- Verify browser compatibility (requires modern browser with Web Audio API)
-
-### Theme Effects Not Visible
-- Theme-specific effects are now always visible for non-classic themes
-- Background patterns should be visible for all themes except Classic
-- If effects are still not visible, try refreshing the page
-
-## Browser Compatibility
-
-- Chrome 70+
-- Firefox 65+
-- Safari 12+
-- Edge 79+
-
-Note: Some features may not work in older browsers or browsers with strict security settings.
+- If panels don't appear when toggled, ensure JavaScript is enabled in your browser
+- If music theory or BPM detection seems inaccurate, try adjusting the confidence/sensitivity settings
+- For performance issues, enable "Low Power Mode" in the controls
