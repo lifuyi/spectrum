@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Test Enhanced Visualizer</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  background: #000;
+  color: #fff;
+}
+.test-section {
+  margin: 20px 0;
+  padding: 15px;
+  border: 1px solid #333;
+  border-radius: 5px;
+}
+.test-result {
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 3px;
+}
+.pass { background: #004400; }
+.fail { background: #440000; }
+button {
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  padding: 8px 12px;
+  margin: 5px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+button:hover { background: #555; }
+</style>
+</head>
+<body>
+  <h1>Enhanced Visualizer Test Page</h1>
+  
+  <div class="test-section">
+    <h2>Module Loading Tests</h2>
+    <div id="module-tests"></div>
+    <button onclick="testModules()">Test Module Loading</button>
+  </div>
+  
+  <div class="test-section">
+    <h2>Audio Manager Tests</h2>
+    <div id="audio-tests"></div>
+    <button onclick="testAudioManager()">Test Audio Manager</button>
+  </div>
+  
+  <div class="test-section">
+    <h2>Playlist Manager Tests</h2>
+    <div id="playlist-tests"></div>
+    <button onclick="testPlaylistManager()">Test Playlist Manager</button>
+  </div>
+  
+  <div class="test-section">
+    <h2>Performance Manager Tests</h2>
+    <div id="performance-tests"></div>
+    <button onclick="testPerformanceManager()">Test Performance Manager</button>
+  </div>
+  
+  <div class="test-section">
+    <h2>Mobile Support Tests</h2>
+    <div id="mobile-tests"></div>
+    <button onclick="testMobileSupport()">Test Mobile Support</button>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="modules/audio-manager.js"></script>
+<script src="modules/playlist-manager.js"></script>
+<script src="modules/performance-manager.js"></script>
+<script src="modules/mobile-support.js"></script>
+
+<script>
+function addTestResult(containerId, testName, passed, message = '') {
+  const container = document.getElementById(containerId);
+  const div = document.createElement('div');
+  div.className = `test-result ${passed ? 'pass' : 'fail'}`;
+  div.innerHTML = `<strong>${testName}:</strong> ${passed ? 'PASS' : 'FAIL'} ${message}`;
+  container.appendChild(div);
+}
+
+function testModules() {
+  const container = document.getElementById('module-tests');
+  container.innerHTML = '';
+  
+  addTestResult('module-tests', 'AudioManager Class', typeof AudioManager !== 'undefined');
+  addTestResult('module-tests', 'PlaylistManager Class', typeof PlaylistManager !== 'undefined');
+  addTestResult('module-tests', 'PerformanceManager Class', typeof PerformanceManager !== 'undefined');
+  addTestResult('module-tests', 'MobileSupport Class', typeof MobileSupport !== 'undefined');
+  addTestResult('module-tests', 'THREE.js Library', typeof THREE !== 'undefined');
+}
+
+function testAudioManager() {
+  const container = document.getElementById('audio-tests');
+  container.innerHTML = '';
+  
+  try {
+    const audioManager = new AudioManager();
+    addTestResult('audio-tests', 'AudioManager Creation', true);
+    
+    addTestResult('audio-tests', 'Has initialize method', typeof audioManager.initialize === 'function');
+    addTestResult('audio-tests', 'Has setVolume method', typeof audioManager.setVolume === 'function');
+    addTestResult('audio-tests', 'Has getVolume method', typeof audioManager.getVolume === 'function');
+    addTestResult('audio-tests', 'Has validateAudioFile method', typeof audioManager.validateAudioFile === 'function');
+    
+    // Test volume control
+    audioManager.setVolume(0.5);
+    addTestResult('audio-tests', 'Volume Control', audioManager.getVolume() === 0.5);
+    
+  } catch (error) {
+    addTestResult('audio-tests', 'AudioManager Creation', false, error.message);
+  }
+}
+
+function testPlaylistManager() {
+  const container = document.getElementById('playlist-tests');
+  container.innerHTML = '';
+  
+  try {
+    const audioManager = new AudioManager();
+    const playlistManager = new PlaylistManager(audioManager);
+    addTestResult('playlist-tests', 'PlaylistManager Creation', true);
+    
+    addTestResult('playlist-tests', 'Has addTrack method', typeof playlistManager.addTrack === 'function');
+    addTestResult('playlist-tests', 'Has removeTrack method', typeof playlistManager.removeTrack === 'function');
+    addTestResult('playlist-tests', 'Has toggleShuffle method', typeof playlistManager.toggleShuffle === 'function');
+    addTestResult('playlist-tests', 'Has setRepeatMode method', typeof playlistManager.setRepeatMode === 'function');
+    
+    // Test adding tracks
+    const trackId = playlistManager.addTrack({
+      name: 'Test Track',
+      artist: 'Test Artist',
+      album: 'Test Album'
+    });
+    addTestResult('playlist-tests', 'Add Track', trackId !== undefined);
+    addTestResult('playlist-tests', 'Track Count', playlistManager.getTracks().length === 1);
+    
+    // Test shuffle
+    const shuffleResult = playlistManager.toggleShuffle();
+    addTestResult('playlist-tests', 'Toggle Shuffle', typeof shuffleResult === 'boolean');
+    
+  } catch (error) {
+    addTestResult('playlist-tests', 'PlaylistManager Creation', false, error.message);
+  }
+}
+
+function testPerformanceManager() {
+  const container = document.getElementById('performance-tests');
+  container.innerHTML = '';
+  
+  try {
+    const performanceManager = new PerformanceManager();
+    addTestResult('performance-tests', 'PerformanceManager Creation', true);
+    
+    addTestResult('performance-tests', 'Has shouldRender method', typeof performanceManager.shouldRender === 'function');
+    addTestResult('performance-tests', 'Has getPerformanceStats method', typeof performanceManager.getPerformanceStats === 'function');
+    addTestResult('performance-tests', 'Has enableLowPowerMode method', typeof performanceManager.enableLowPowerMode === 'function');
+    
+    // Test performance stats
+    const stats = performanceManager.getPerformanceStats();
+    addTestResult('performance-tests', 'Performance Stats', stats && typeof stats.fps === 'number');
+    
+    // Test low power mode
+    performanceManager.enableLowPowerMode();
+    addTestResult('performance-tests', 'Low Power Mode', performanceManager.isLowPowerMode === true);
+    
+  } catch (error) {
+    addTestResult('performance-tests', 'PerformanceManager Creation', false, error.message);
+  }
+}
+
+function testMobileSupport() {
+  const container = document.getElementById('mobile-tests');
+  container.innerHTML = '';
+  
+  try {
+    const mobileSupport = new MobileSupport();
+    addTestResult('mobile-tests', 'MobileSupport Creation', true);
+    
+    addTestResult('mobile-tests', 'Has detectMobile method', typeof mobileSupport.detectMobile === 'function');
+    addTestResult('mobile-tests', 'Has getOrientation method', typeof mobileSupport.getOrientation === 'function');
+    addTestResult('mobile-tests', 'Has addTouchHandler method', typeof mobileSupport.addTouchHandler === 'function');
+    
+    // Test mobile detection
+    const isMobile = mobileSupport.detectMobile();
+    addTestResult('mobile-tests', 'Mobile Detection', typeof isMobile === 'boolean');
+    
+    // Test orientation
+    const orientation = mobileSupport.getOrientation();
+    addTestResult('mobile-tests', 'Orientation Detection', typeof orientation === 'number');
+    
+  } catch (error) {
+    addTestResult('mobile-tests', 'MobileSupport Creation', false, error.message);
+  }
+}
+
+// Auto-run tests on load
+setTimeout(() => {
+  testModules();
+  testAudioManager();
+  testPlaylistManager();
+  testPerformanceManager();
+  testMobileSupport();
+}, 100);
+</script>
+</body>
+</html>

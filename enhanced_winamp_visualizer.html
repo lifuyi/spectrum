@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Winamp-Style Spectrum</title>
+<title>Enhanced Winamp-Style Spectrum</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,10 +13,10 @@
   </button>
 
   <header>
-    <h1>Winamp Spectrum</h1>
+    <h1>Enhanced Winamp Spectrum</h1>
     <label class="file btn">
       Load audio
-      <input id="file" type="file" accept="audio/*" />
+      <input id="file" type="file" accept="audio/*" multiple />
     </label>
     <button id="url" class="btn">Load URL</button>
     <button id="mic" class="btn">Use mic</button>
@@ -107,16 +107,34 @@
         <span id="beat-sensitivity-val">1.2</span>
       </label>
       <button id="reset-eq" class="btn" title="Reset EQ to 0 dB">Reset EQ</button>
+      <div class="volume-control">
+        <span>Vol</span>
+        <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="100" title="Volume">
+        <span id="volume-value">100%</span>
+      </div>
     </div>
   </header>
-  <section class="playlist" aria-label="Playlist">
+  
+  <section class="playlist" aria-label="Enhanced Playlist">
+    <div class="playlist-header">
+      <h3>Playlist</h3>
+      <div class="playlist-controls">
+        <button id="shuffle-btn" class="btn" title="Shuffle">Shuffle</button>
+        <button id="repeat-btn" class="btn" title="Repeat">Repeat</button>
+        <button id="clear-playlist" class="btn" title="Clear Playlist">Clear</button>
+        <button id="save-playlist" class="btn" title="Save Playlist">Save</button>
+        <button id="load-playlist" class="btn" title="Load Playlist">Load</button>
+      </div>
+    </div>
     <div class="playlist-list" id="playlist"></div>
   </section>
+  
   <main>
     <div id="bg-pattern" class="bg-pattern"></div>
-    <canvas id="viz" width="1000" height="420" aria-label="Winamp-style spectrum"></canvas>
+    <canvas id="viz" width="1000" height="420" aria-label="Enhanced Winamp-style spectrum"></canvas>
     <div id="three-container"></div>
   </main>
+  
   <section class="eq" aria-label="Equalizer">
     <div class="eq-controls">
       <strong>Equalizer</strong>
@@ -124,9 +142,16 @@
     </div>
     <div class="eq-sliders" id="eq-sliders"></div>
   </section>
+  
   <footer>
-    20-band log spectrum with LED segments, peak-hold, classic color ramp. Now with 3D visualizations, beat detection, spectrogram view, and keyboard shortcuts!
+    Enhanced 20-band log spectrum with LED segments, peak-hold, classic color ramp. Now with 3D visualizations, beat detection, spectrogram view, enhanced playlist management, mobile support, and performance optimizations!
   </footer>
+
+  <!-- Performance Indicator -->
+  <div id="performance-indicator" class="performance-indicator">
+    FPS: <span id="fps-counter">60</span> | 
+    Memory: <span id="memory-usage">0MB</span>
+  </div>
 
   <!-- Theme Creator Modal -->
   <div id="theme-modal" class="theme-modal">
@@ -193,5 +218,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="script.js"></script>
+<script src="modules/audio-manager.js"></script>
+<script src="modules/playlist-manager.js"></script>
+<script src="modules/performance-manager.js"></script>
+<script src="modules/mobile-support.js"></script>
+<script src="enhanced_script.js"></script>
 </body>
 </html>
