@@ -282,19 +282,14 @@ function setupEnhancedControls() {
       musicTheoryPanel.style.display = musicTheoryToggle.checked ? 'block' : 'none';
       
       musicTheoryToggle.addEventListener('change', (e) => {
-        console.log('Music theory toggle changed:', e.target.checked);
         if (e.target.checked) {
           musicTheoryPanel.style.display = 'block';
           if (musicTheoryAnalyzer) {
-            console.log('Starting music theory analysis...');
             musicTheoryAnalyzer.startAnalysis();
-          } else {
-            console.log('musicTheoryAnalyzer not available');
           }
         } else {
           musicTheoryPanel.style.display = 'none';
           if (musicTheoryAnalyzer) {
-            console.log('Stopping music theory analysis...');
             musicTheoryAnalyzer.stopAnalysis();
           }
         }
@@ -370,7 +365,6 @@ function setupEnhancedControls() {
       
       chordConfidenceSlider.addEventListener('input', (e) => {
         const value = parseFloat(e.target.value);
-        console.log('Chord confidence threshold changed to:', value);
         if (musicTheoryAnalyzer) {
           musicTheoryAnalyzer.chordConfidenceThreshold = value;
         }
@@ -380,10 +374,14 @@ function setupEnhancedControls() {
     
     // Set up BPM sensitivity slider
     const bpmSensitivitySlider = document.getElementById('bpm-sensitivity');
+    const bpmSensitivityValue = document.getElementById('bpm-sensitivity-value');
     if (bpmSensitivitySlider && bpmDetector) {
       bpmSensitivitySlider.addEventListener('input', (e) => {
         const value = parseFloat(e.target.value);
         bpmDetector.peakThreshold = value;
+        if (bpmSensitivityValue) {
+          bpmSensitivityValue.textContent = Math.round(value * 100) + '%';
+        }
       });
     }
   }, 100);
@@ -744,33 +742,23 @@ function setupMusicTheoryCallbacks() {
     },
     
     onChordDetected: function(chord) {
-      console.log('onChordDetected callback called with:', chord);
       const chordElement = document.getElementById('current-chord');
       const romanElement = document.getElementById('roman-numeral');
       const confidenceElement = document.getElementById('chord-confidence');
       
-      console.log('DOM elements found:', {
-        chordElement: !!chordElement,
-        romanElement: !!romanElement,
-        confidenceElement: !!confidenceElement
-      });
-      
       if (chordElement && musicTheoryAnalyzer) {
         const chordText = chord.root + musicTheoryAnalyzer.getChordSymbol(chord.quality);
-        console.log('Setting chord text to:', chordText);
         chordElement.textContent = chordText;
         chordElement.className = 'chord-display ' + chord.quality;
       }
       
       if (romanElement) {
-        console.log('Setting roman numeral to:', chord.roman);
         romanElement.textContent = chord.roman;
         romanElement.className = 'roman-numeral ' + chord.quality;
       }
       
       if (confidenceElement) {
         const confidenceText = Math.round(chord.confidence * 100) + '%';
-        console.log('Setting confidence to:', confidenceText);
         confidenceElement.textContent = confidenceText;
       }
     },

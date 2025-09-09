@@ -224,11 +224,11 @@ class MusicTheoryAnalyzer {
     let bestChord = null;
     let bestScore = 0;
     
-    // Debug: log chroma vector
-    const chromaSum = this.chromaVector.reduce((a, b) => a + b, 0);
-    if (chromaSum > 0.01) { // Only log if there's significant audio
-      console.log('Chroma vector:', this.chromaVector.map(v => Math.round(v * 100) / 100));
-    }
+    // Debug: log chroma vector (commented out)
+    // const chromaSum = this.chromaVector.reduce((a, b) => a + b, 0);
+    // if (chromaSum > 0.01) { // Only log if there's significant audio
+    //   console.log('Chroma vector:', this.chromaVector.map(v => Math.round(v * 100) / 100));
+    // }
     
     // Test all possible chord roots and qualities
     for (let root = 0; root < 12; root++) {
@@ -247,10 +247,10 @@ class MusicTheoryAnalyzer {
       });
     }
     
-    // Debug: always log the best chord found
-    if (bestChord) {
-      console.log('Best chord found:', bestChord.root, bestChord.quality, 'Score:', bestScore, 'Threshold:', this.chordConfidenceThreshold);
-    }
+    // Debug: always log the best chord found (commented out)
+    // if (bestChord) {
+    //   console.log('Best chord found:', bestChord.root, bestChord.quality, 'Score:', bestScore, 'Threshold:', this.chordConfidenceThreshold);
+    // }
     
     if (bestChord && bestScore > this.chordConfidenceThreshold) {
       // Calculate Roman numeral
@@ -266,15 +266,12 @@ class MusicTheoryAnalyzer {
         confidence: bestScore
       };
       
-      // Debug logging
-      console.log('Chord detected:', bestChord.root, bestChord.quality, 'Score:', bestScore, 'Changed:', chordChanged);
+      // Debug logging (commented out)
+      // console.log('Chord detected:', bestChord.root, bestChord.quality, 'Score:', bestScore, 'Changed:', chordChanged);
       
       // Always call the callback to update UI, even if chord hasn't changed
       if (this.callbacks.onChordDetected) {
-        console.log('Calling onChordDetected callback with:', this.currentChord);
         this.callbacks.onChordDetected(this.currentChord);
-      } else {
-        console.log('No onChordDetected callback set');
       }
       
       // Add to chord history
@@ -298,12 +295,12 @@ class MusicTheoryAnalyzer {
         }
       }
     } else {
-      // Debug: log why chord wasn't accepted
-      if (bestChord) {
-        console.log('Chord rejected - score too low:', bestScore, 'vs threshold:', this.chordConfidenceThreshold);
-      } else {
-        console.log('No chord detected');
-      }
+      // Debug: log why chord wasn't accepted (commented out)
+      // if (bestChord) {
+      //   console.log('Chord rejected - score too low:', bestScore, 'vs threshold:', this.chordConfidenceThreshold);
+      // } else {
+      //   console.log('No chord detected');
+      // }
     }
   }
 
