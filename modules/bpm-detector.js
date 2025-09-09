@@ -13,7 +13,7 @@ class BPMDetector {
     // BPM detection parameters
     this.minBPM = 60;
     this.maxBPM = 200;
-    this.peakThreshold = 0.3;
+    this.peakThreshold = 0.15; // Lowered for better sensitivity
     this.historyLength = 20;
     this.smoothingFactor = 0.8;
     
@@ -46,8 +46,8 @@ class BPMDetector {
   detectBPM(frequencyData, timeData) {
     if (!this.isAnalyzing) return this.currentBPM;
     
-    // Debug: log that we're analyzing
-    console.log('BPM detectBPM called, analyzing:', this.isAnalyzing);
+    // Debug: log that we're analyzing (commented out to reduce spam)
+    // console.log('BPM detectBPM called, analyzing:', this.isAnalyzing);
 
     const now = performance.now();
     

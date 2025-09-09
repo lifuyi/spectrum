@@ -797,7 +797,7 @@ function setupBPMCallbacks() {
   
   bpmDetector.setCallbacks({
     onBPMDetected: function(data) {
-      console.log('BPM detected:', data);
+      console.log('BPM detected:', data.bpm, 'confidence:', data.confidence);
       const bpmDisplay = document.getElementById('bpm-display');
       const confidenceDisplay = document.getElementById('bpm-confidence');
       const tempoDescription = document.getElementById('tempo-description');
