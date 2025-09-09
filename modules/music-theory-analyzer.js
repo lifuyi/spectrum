@@ -23,7 +23,7 @@ class MusicTheoryAnalyzer {
     
     // Key detection confidence threshold
     this.keyConfidenceThreshold = 0.6;
-    this.chordConfidenceThreshold = 0.5;
+    this.chordConfidenceThreshold = 0.08; // Lowered significantly for complex music
     
     // Analysis state
     this.isAnalyzing = false;
@@ -104,12 +104,16 @@ class MusicTheoryAnalyzer {
 
   // Main analysis function
   analyzeMusic(frequencyData, timeData) {
-    if (!this.isAnalyzing) return;
+    if (!this.isAnalyzing) {
+      console.log('Music theory analysis not active');
+      return;
+    }
     
     const now = performance.now();
     if (now - this.lastAnalysisTime < this.analysisInterval) return;
     
     this.lastAnalysisTime = now;
+    // console.log('Running music theory analysis...');
     
     // Calculate chroma vector from frequency data
     this.calculateChromaVector(frequencyData);
@@ -220,6 +224,12 @@ class MusicTheoryAnalyzer {
     let bestChord = null;
     let bestScore = 0;
     
+    // Debug: log chroma vector
+    const chromaSum = this.chromaVector.reduce((a, b) => a + b, 0);
+    if (chromaSum > 0.01) { // Only log if there's significant audio
+      console.log('Chroma vector:', this.chromaVector.map(v => Math.round(v * 100) / 100));
+    }
+    
     // Test all possible chord roots and qualities
     for (let root = 0; root < 12; root++) {
       Object.keys(this.chordTemplates).forEach(quality => {
@@ -237,6 +247,11 @@ class MusicTheoryAnalyzer {
       });
     }
     
+    // Debug: always log the best chord found
+    if (bestChord) {
+      console.log('Best chord found:', bestChord.root, bestChord.quality, 'Score:', bestScore, 'Threshold:', this.chordConfidenceThreshold);
+    }
+    
     if (bestChord && bestScore > this.chordConfidenceThreshold) {
       // Calculate Roman numeral
       const romanNumeral = this.calculateRomanNumeral(bestChord.root, bestChord.quality);
@@ -250,6 +265,17 @@ class MusicTheoryAnalyzer {
         roman: romanNumeral,
         confidence: bestScore
       };
+      
+      // Debug logging
+      console.log('Chord detected:', bestChord.root, bestChord.quality, 'Score:', bestScore, 'Changed:', chordChanged);
+      
+      // Always call the callback to update UI, even if chord hasn't changed
+      if (this.callbacks.onChordDetected) {
+        console.log('Calling onChordDetected callback with:', this.currentChord);
+        this.callbacks.onChordDetected(this.currentChord);
+      } else {
+        console.log('No onChordDetected callback set');
+      }
       
       // Add to chord history
       if (chordChanged) {
@@ -265,13 +291,18 @@ class MusicTheoryAnalyzer {
           now - chord.timestamp < maxAge
         );
         
-        if (this.callbacks.onChordDetected) {
-          this.callbacks.onChordDetected(this.currentChord);
-        }
+        // Callback already called above
         
         if (this.callbacks.onProgressionUpdate) {
           this.callbacks.onProgressionUpdate(this.getRecentProgression());
         }
+      }
+    } else {
+      // Debug: log why chord wasn't accepted
+      if (bestChord) {
+        console.log('Chord rejected - score too low:', bestScore, 'vs threshold:', this.chordConfidenceThreshold);
+      } else {
+        console.log('No chord detected');
       }
     }
   }

@@ -495,4 +495,5 @@ class KeyboardShortcuts {
   }
 }
 
-export default KeyboardShortcuts;
+// Make KeyboardShortcuts available globally
+window.KeyboardShortcuts = KeyboardShortcuts;
