@@ -176,23 +176,28 @@ function setupEnhancedControls() {
   if (fileInput) {
     fileInput.addEventListener('change', async (e) => {
       const files = Array.from(e.target.files);
+      // Stop current playback before loading new files
+      if (audioManager.isPlaying()) {
+        audioManager.stop();
+      }
+      
       for (const file of files) {
         try {
-          await audioManager.loadFile(file);
           playlistManager.addTrack({
             name: file.name,
             file: file,
             artist: 'Unknown Artist',
             album: 'Unknown Album'
           });
-          
-          // Auto-play first track if playlist was empty
-          if (playlistManager.getTracks().length === 1) {
-            await playlistManager.playTrack(0);
-          }
         } catch (error) {
-          showErrorMessage(`Failed to load ${file.name}: ${error.message}`);
+          showErrorMessage(`Failed to add ${file.name}: ${error.message}`);
         }
+      }
+      
+      // Auto-play the last added track
+      if (files.length > 0) {
+        const trackIndex = playlistManager.getTracks().length - 1;
+        await playlistManager.playTrack(trackIndex);
       }
     });
   }
@@ -204,7 +209,11 @@ function setupEnhancedControls() {
       const url = prompt('Enter audio URL:');
       if (url) {
         try {
-          await audioManager.loadFromURL(url);
+          // Stop current playback before loading new URL
+          if (audioManager.isPlaying()) {
+            audioManager.stop();
+          }
+          
           playlistManager.addTrack({
             name: extractFilenameFromURL(url),
             url: url,
@@ -212,10 +221,9 @@ function setupEnhancedControls() {
             album: 'Unknown Album'
           });
           
-          // Auto-play if first track
-          if (playlistManager.getTracks().length === 1) {
-            await playlistManager.playTrack(0);
-          }
+          // Auto-play the new track
+          const trackIndex = playlistManager.getTracks().length - 1;
+          await playlistManager.playTrack(trackIndex);
         } catch (error) {
           showErrorMessage(`Failed to load URL: ${error.message}`);
         }
