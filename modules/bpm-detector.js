@@ -45,6 +45,9 @@ class BPMDetector {
   // Main BPM detection function
   detectBPM(frequencyData, timeData) {
     if (!this.isAnalyzing) return this.currentBPM;
+    
+    // Debug: log that we're analyzing
+    console.log('BPM detectBPM called, analyzing:', this.isAnalyzing);
 
     const now = performance.now();
     

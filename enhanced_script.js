@@ -309,15 +309,23 @@ function setupEnhancedControls() {
         if (e.target.checked) {
           bpmPanel.style.display = 'block';
           if (bpmDetector) {
+            console.log('Starting BPM analysis...');
             bpmDetector.startAnalysis();
           }
         } else {
           bpmPanel.style.display = 'none';
           if (bpmDetector) {
+            console.log('Stopping BPM analysis...');
             bpmDetector.stopAnalysis();
           }
         }
       });
+      
+      // Auto-start BPM analysis if checkbox is already checked
+      if (bpmToggle.checked && bpmDetector) {
+        console.log('Auto-starting BPM analysis (checkbox was checked)...');
+        bpmDetector.startAnalysis();
+      }
     }
   }, 100);
   
@@ -789,6 +797,7 @@ function setupBPMCallbacks() {
   
   bpmDetector.setCallbacks({
     onBPMDetected: function(data) {
+      console.log('BPM detected:', data);
       const bpmDisplay = document.getElementById('bpm-display');
       const confidenceDisplay = document.getElementById('bpm-confidence');
       const tempoDescription = document.getElementById('tempo-description');
