@@ -2404,20 +2404,20 @@
     
     analyser.getByteFrequencyData(freqData);
     
-    // Perform music theory analysis if available
-    if (window.musicTheoryAnalyzer && window.musicTheoryAnalyzer.isAnalyzing) {
-      // Get time domain data for music theory analysis
+    // Perform music theory and BPM analysis if available (optimized to reduce processing)
+    if ((window.musicTheoryAnalyzer && window.musicTheoryAnalyzer.isAnalyzing) || 
+        (window.bpmDetector && window.bpmDetector.isAnalyzing)) {
+      // Get time domain data once for both analyses
       const timeData = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteTimeDomainData(timeData);
-      window.musicTheoryAnalyzer.analyzeMusic(freqData, timeData);
-    }
-    
-    // Perform BPM analysis if available
-    if (window.bpmDetector && window.bpmDetector.isAnalyzing) {
-      // Get time domain data for BPM analysis
-      const timeData = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteTimeDomainData(timeData);
-      window.bpmDetector.detectBPM(freqData, timeData);
+      
+      if (window.musicTheoryAnalyzer && window.musicTheoryAnalyzer.isAnalyzing) {
+        window.musicTheoryAnalyzer.analyzeMusic(freqData, timeData);
+      }
+      
+      if (window.bpmDetector && window.bpmDetector.isAnalyzing) {
+        window.bpmDetector.detectBPM(freqData, timeData);
+      }
     }
 
     let levels;
