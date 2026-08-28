@@ -13,13 +13,13 @@ class BPMDetector {
     // BPM detection parameters
     this.minBPM = 60;
     this.maxBPM = 200;
-    this.peakThreshold = 0.15; // Lowered for better sensitivity
+    this.peakThreshold = 0.12;
     this.historyLength = 20;
     this.smoothingFactor = 0.8;
     
     // Energy analysis
-    this.energyHistory = new Array(43).fill(0); // ~1 second at 43Hz update rate
-    this.energyVariance = 0;
+    this.energyHistory = new Array(43).fill(0);
+    this.prevEnergy = 0;
     
     this.callbacks = {
       onBPMDetected: null,
@@ -36,26 +36,23 @@ class BPMDetector {
     this.bpmHistory = [];
     this.peakHistory = [];
     this.energyHistory.fill(0);
+    this.prevEnergy = 0;
+    this.lastPeakTime = 0;
+    this.currentBPM = 0;
+    this.confidence = 0;
   }
 
   stopAnalysis() {
     this.isAnalyzing = false;
   }
 
-  // Main BPM detection function
   detectBPM(frequencyData, timeData) {
     if (!this.isAnalyzing) return this.currentBPM;
-    
-    // Debug: log that we're analyzing (commented out to reduce spam)
-    // console.log('BPM detectBPM called, analyzing:', this.isAnalyzing);
 
     const now = performance.now();
     
-    // Calculate energy in different frequency bands
     const energy = this.calculateEnergy(frequencyData);
-    const lowEnergy = this.calculateBandEnergy(frequencyData, 0, 10); // Bass
-    const midEnergy = this.calculateBandEnergy(frequencyData, 10, 100); // Mid
-    const highEnergy = this.calculateBandEnergy(frequencyData, 100, 255); // High
+    const lowEnergy = this.calculateBandEnergy(frequencyData, 0, 10);
     
     // Update energy history
     this.energyHistory.push(energy);
@@ -63,46 +60,50 @@ class BPMDetector {
       this.energyHistory.shift();
     }
     
-    // Calculate energy variance for beat detection
-    this.updateEnergyVariance();
+    // Simple peak detection: current energy must exceed recent average by threshold
+    // and be rising compared to previous frame
+    const recentEnergy = this.energyHistory.slice(-10);
+    const localAverage = recentEnergy.reduce((sum, val) => sum + val, 0) / recentEnergy.length;
+    const isRising = energy > this.prevEnergy;
+    const isAboveAverage = energy > localAverage * (1 + this.peakThreshold);
+    const isPeak = isRising && isAboveAverage && energy > 0.05;
     
-    // Detect peaks (potential beats)
-    const isPeak = this.detectPeak(energy, lowEnergy);
+    this.prevEnergy = energy;
     
     if (isPeak) {
       const timeSinceLastPeak = now - this.lastPeakTime;
+      this.lastPeakTime = now;
       
-      if (timeSinceLastPeak > 200 && timeSinceLastPeak < 2000) { // 30-300 BPM range
-        const instantBPM = 60000 / timeSinceLastPeak;
+      // Debounce: ignore peaks too close together
+      if (timeSinceLastPeak < 250) return this.currentBPM;
+      
+      const instantBPM = 60000 / timeSinceLastPeak;
+      
+      if (instantBPM >= this.minBPM && instantBPM <= this.maxBPM) {
+        this.peakHistory.push({
+          time: now,
+          bpm: instantBPM,
+          energy: energy
+        });
         
-        if (instantBPM >= this.minBPM && instantBPM <= this.maxBPM) {
-          this.peakHistory.push({
-            time: now,
-            bpm: instantBPM,
-            energy: energy
+        // Keep only recent peaks (last 15 seconds)
+        this.peakHistory = this.peakHistory.filter(peak => 
+          now - peak.time < 15000
+        );
+        
+        // Calculate BPM from peak history
+        this.calculateBPMFromPeaks();
+        
+        // Trigger beat callback
+        if (this.callbacks.onBeatDetected) {
+          this.callbacks.onBeatDetected({
+            bpm: this.currentBPM,
+            confidence: this.confidence,
+            energy: energy,
+            timestamp: now
           });
-          
-          // Keep only recent peaks
-          this.peakHistory = this.peakHistory.filter(peak => 
-            now - peak.time < 10000 // Last 10 seconds
-          );
-          
-          // Calculate BPM from peak history
-          this.calculateBPMFromPeaks();
-          
-          // Trigger beat callback
-          if (this.callbacks.onBeatDetected) {
-            this.callbacks.onBeatDetected({
-              bpm: this.currentBPM,
-              confidence: this.confidence,
-              energy: energy,
-              timestamp: now
-            });
-          }
         }
       }
-      
-      this.lastPeakTime = now;
     }
     
     return this.currentBPM;
@@ -128,75 +129,61 @@ class BPMDetector {
     return Math.sqrt(energy / (end - start)) / 255;
   }
 
-  updateEnergyVariance() {
-    if (this.energyHistory.length < 10) return;
-    
-    const mean = this.energyHistory.reduce((sum, val) => sum + val, 0) / this.energyHistory.length;
-    const variance = this.energyHistory.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / this.energyHistory.length;
-    
-    this.energyVariance = Math.sqrt(variance);
-  }
-
-  detectPeak(currentEnergy, lowEnergy) {
-    if (this.energyHistory.length < 10) return false;
-    
-    // Local energy average
-    const recentEnergy = this.energyHistory.slice(-5);
-    const localAverage = recentEnergy.reduce((sum, val) => sum + val, 0) / recentEnergy.length;
-    
-    // Peak detection criteria
-    const energyThreshold = localAverage * (1 + this.peakThreshold);
-    const varianceThreshold = this.energyVariance * 1.5;
-    
-    // Strong emphasis on bass frequencies for beat detection
-    const bassWeight = lowEnergy * 2;
-    const weightedEnergy = currentEnergy + bassWeight;
-    
-    return weightedEnergy > energyThreshold && this.energyVariance > 0.01;
-  }
-
   calculateBPMFromPeaks() {
-    if (this.peakHistory.length < 4) return;
+    if (this.peakHistory.length < 3) return;
     
     // Calculate intervals between peaks
     const intervals = [];
     for (let i = 1; i < this.peakHistory.length; i++) {
       const interval = this.peakHistory[i].time - this.peakHistory[i-1].time;
-      if (interval > 200 && interval < 2000) { // Valid BPM range
+      if (interval > 250 && interval < 2000) {
         intervals.push(interval);
       }
     }
     
-    if (intervals.length < 3) return;
+    if (intervals.length < 2) return;
     
-    // Find the most common interval (mode)
-    const bpmCounts = {};
+    // Group intervals into BPM buckets (within 5 BPM tolerance)
+    const bpmBuckets = {};
     intervals.forEach(interval => {
       const bpm = Math.round(60000 / interval);
-      bpmCounts[bpm] = (bpmCounts[bpm] || 0) + 1;
-    });
-    
-    // Find BPM with highest count
-    let maxCount = 0;
-    let detectedBPM = this.currentBPM;
-    
-    Object.entries(bpmCounts).forEach(([bpm, count]) => {
-      if (count > maxCount) {
-        maxCount = count;
-        detectedBPM = parseInt(bpm);
+      let placed = false;
+      for (const key in bpmBuckets) {
+        if (Math.abs(parseInt(key) - bpm) <= 5) {
+          bpmBuckets[key].count++;
+          bpmBuckets[key].sum += interval;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        bpmBuckets[bpm] = { count: 1, sum: interval };
       }
     });
+    
+    // Find BPM bucket with highest count
+    let maxCount = 0;
+    let bestBPM = 0;
+    
+    for (const bpm in bpmBuckets) {
+      if (bpmBuckets[bpm].count > maxCount) {
+        maxCount = bpmBuckets[bpm].count;
+        bestBPM = parseInt(bpm);
+      }
+    }
+    
+    if (bestBPM === 0) return;
     
     // Calculate confidence based on consistency
     this.confidence = Math.min(1, maxCount / Math.max(intervals.length, 1));
     
     // Smooth BPM changes
     if (this.currentBPM === 0) {
-      this.currentBPM = detectedBPM;
+      this.currentBPM = bestBPM;
     } else {
       this.currentBPM = Math.round(
         this.currentBPM * this.smoothingFactor + 
-        detectedBPM * (1 - this.smoothingFactor)
+        bestBPM * (1 - this.smoothingFactor)
       );
     }
     
@@ -216,7 +203,6 @@ class BPMDetector {
     }
   }
 
-  // Advanced BPM detection using autocorrelation
   detectBPMAutocorrelation(audioBuffer) {
     const sampleRate = this.sampleRate;
     const minPeriod = Math.floor(sampleRate * 60 / this.maxBPM);
@@ -225,7 +211,6 @@ class BPMDetector {
     let bestCorrelation = 0;
     let bestPeriod = 0;
     
-    // Calculate autocorrelation for different periods
     for (let period = minPeriod; period <= maxPeriod; period += 10) {
       let correlation = 0;
       let count = 0;
@@ -244,57 +229,19 @@ class BPMDetector {
     }
     
     if (bestPeriod > 0) {
-      const bpm = Math.round(sampleRate * 60 / bestPeriod);
-      return {
-        bpm: bpm,
-        confidence: bestCorrelation,
-        method: 'autocorrelation'
-      };
+      return Math.round(60 * sampleRate / bestPeriod);
     }
     
-    return null;
+    return 0;
   }
 
-  // Get current BPM info
-  getBPMInfo() {
-    return {
-      bpm: this.currentBPM,
-      confidence: this.confidence,
-      isAnalyzing: this.isAnalyzing,
-      history: [...this.bpmHistory],
-      energyVariance: this.energyVariance
-    };
-  }
-
-  // Reset detection
-  reset() {
-    this.currentBPM = 0;
-    this.confidence = 0;
-    this.bpmHistory = [];
-    this.peakHistory = [];
-    this.energyHistory.fill(0);
-    this.lastPeakTime = 0;
-  }
-
-  // Set BPM manually (for testing or manual override)
-  setBPM(bpm) {
-    if (bpm >= this.minBPM && bpm <= this.maxBPM) {
-      this.currentBPM = bpm;
-      this.confidence = 1.0;
-    }
-  }
-
-  // Get tempo description
-  getTempoDescription(bpm = this.currentBPM) {
-    if (bpm < 60) return 'Very Slow';
-    if (bpm < 80) return 'Slow';
-    if (bpm < 100) return 'Moderate';
-    if (bpm < 120) return 'Medium';
-    if (bpm < 140) return 'Fast';
-    if (bpm < 160) return 'Very Fast';
-    return 'Extremely Fast';
+  getTempoDescription(bpm) {
+    if (bpm === 0) return 'Unknown';
+    if (bpm < 80) return 'Largo (Slow)';
+    if (bpm < 100) return 'Andante (Walking pace)';
+    if (bpm < 120) return 'Moderato (Moderate)';
+    if (bpm < 140) return 'Allegro (Fast)';
+    if (bpm < 168) return 'Vivace (Very fast)';
+    return 'Presto (Very fast)';
   }
 }
-
-// Make BPMDetector available globally
-window.BPMDetector = BPMDetector;

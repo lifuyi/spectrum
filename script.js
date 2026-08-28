@@ -35,6 +35,14 @@
   const peakVelocityValEl = document.getElementById('peak-velocity-val');
   const beatSensitivityEl = document.getElementById('beat-sensitivity');
   const beatSensitivityValEl = document.getElementById('beat-sensitivity-val');
+  const prevTrackBtn = document.getElementById('prev-track');
+  const nextTrackBtn = document.getElementById('next-track');
+  const shuffleBtn = document.getElementById('shuffle-btn');
+  const repeatBtn = document.getElementById('repeat-btn');
+  const clearPlaylistBtn = document.getElementById('clear-playlist');
+  const playlistCountEl = document.getElementById('playlist-count');
+  const playlistDurationEl = document.getElementById('playlist-duration');
+  const nowPlayingEl = document.getElementById('now-playing-info');
 
   // Audio
   let audioContext = null;
@@ -45,6 +53,9 @@
   let mediaStream = null;
   const playlist = [];
   let currentTrackIndex = -1;
+  let isShuffled = false;
+  let repeatMode = 'none'; // 'none', 'one', 'all'
+  let shuffleOrder = [];
 
   // 3D Variables
   let scene = null;
@@ -191,30 +202,36 @@
   function triggerBeatEffects(intensity = 0.5) {
     const targetElement = is3DMode ? threeContainer : canvas;
     const isIntense = intensity > 1.0;
-    
-    // Glow effects
-    if (!is3DMode) {
-      canvas.classList.add('beat-glow');
-      setTimeout(() => canvas.classList.remove('beat-glow'), 150);
-    } else {
-      // 3D container glow
-      threeContainer.classList.add('beat-glow');
-      setTimeout(() => threeContainer.classList.remove('beat-glow'), 150);
-      
-      // 3D mesh glow effects
-      threeMeshes.forEach(mesh => {
-        if (mesh.material) {
-          const originalEmissive = mesh.material.emissive?.getHex() || 0x000000;
-          mesh.material.emissive?.setHex(0x444444);
-          setTimeout(() => {
-            if (mesh.material && mesh.material.emissive) {
-              mesh.material.emissive.setHex(originalEmissive);
-            }
-          }, 100);
-        }
-      });
+    const anyBeatEffect = (shakeChk && shakeChk.checked) || (flashChk && flashChk.checked) || (zoomChk && zoomChk.checked);
+
+    // Glow effects (only if at least one beat effect is enabled)
+    if (anyBeatEffect) {
+      if (!is3DMode) {
+        canvas.classList.add('beat-glow');
+        setTimeout(() => canvas.classList.remove('beat-glow'), 150);
+      } else {
+        // 3D container glow
+        threeContainer.classList.add('beat-glow');
+        setTimeout(() => threeContainer.classList.remove('beat-glow'), 150);
+        
+        // 3D mesh glow effects
+        threeMeshes.forEach(mesh => {
+          if (mesh.material) {
+            const originalEmissive = mesh.material.emissive?.getHex() || 0x000000;
+            mesh.material.emissive?.setHex(0x444444);
+            setTimeout(() => {
+              if (mesh.material && mesh.material.emissive) {
+                mesh.material.emissive.setHex(originalEmissive);
+              }
+            }, 100);
+          }
+        });
+      }
     }
     
+    // Skip effects-only during demo mode (no audio playing)
+    if (isDemoMode) return;
+
     // Shake effects (if enabled)
     if (shakeChk && shakeChk.checked) {
       targetElement.classList.remove('beat-shake', 'beat-shake-intense');
@@ -227,8 +244,8 @@
       }, duration);
     }
     
-    // Flash effects (if disabled - inverted logic)
-    if (flashChk && !flashChk.checked) {
+    // Flash effects (if enabled)
+    if (flashChk && flashChk.checked) {
       targetElement.classList.remove('beat-flash');
       // Force reflow to ensure the class is properly removed before adding it again
       targetElement.offsetHeight;
@@ -712,14 +729,18 @@
 
   // Demo beat simulation (every 500ms when no audio)
   let demoBeatInterval = null;
+  let isDemoMode = false;
   function startDemoBeats() {
     // Only start demo beats if we have an analyser but no active audio
     if (analyser && (!freqData || freqData.every(val => val === 0))) {
       if (demoBeatInterval) clearInterval(demoBeatInterval);
+      isDemoMode = true;
       demoBeatInterval = setInterval(() => {
         // Only trigger if we still have no audio data
         if (analyser && (!freqData || freqData.every(val => val === 0))) {
           triggerBeatGlow();
+        } else {
+          stopDemoBeats();
         }
       }, 500);
     }
@@ -730,6 +751,7 @@
       clearInterval(demoBeatInterval);
       demoBeatInterval = null;
     }
+    isDemoMode = false;
   }
 
   // 3D Scene Setup
@@ -762,23 +784,22 @@
   }
 
   // 3D Visualizations
-  function create3DBars(levels) {
-    // Clear previous meshes
+  function disposeMeshes() {
     threeMeshes.forEach(mesh => {
       scene.remove(mesh);
-      // Dispose of geometry and material to prevent memory leaks
-      if (mesh.geometry) {
-        mesh.geometry.dispose();
-      }
+      if (mesh.geometry) mesh.geometry.dispose();
       if (mesh.material) {
         if (Array.isArray(mesh.material)) {
-          mesh.material.forEach(material => material.dispose());
+          mesh.material.forEach(m => m.dispose());
         } else {
           mesh.material.dispose();
         }
       }
     });
     threeMeshes = [];
+  }
+  function create3DBars(levels) {
+    disposeMeshes();
     
     const barWidth = 0.15;
     const spacing = 0.2;
@@ -802,21 +823,7 @@
   }
 
   function create3DSphere(levels) {
-    threeMeshes.forEach(mesh => {
-      scene.remove(mesh);
-      // Dispose of geometry and material to prevent memory leaks
-      if (mesh.geometry) {
-        mesh.geometry.dispose();
-      }
-      if (mesh.material) {
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach(material => material.dispose());
-        } else {
-          mesh.material.dispose();
-        }
-      }
-    });
-    threeMeshes = [];
+    disposeMeshes();
     
     const radius = 2;
     const segments = levels.length;
@@ -846,21 +853,7 @@
   }
 
   function create3DTunnel(levels) {
-    threeMeshes.forEach(mesh => {
-      scene.remove(mesh);
-      // Dispose of geometry and material to prevent memory leaks
-      if (mesh.geometry) {
-        mesh.geometry.dispose();
-      }
-      if (mesh.material) {
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach(material => material.dispose());
-        } else {
-          mesh.material.dispose();
-        }
-      }
-    });
-    threeMeshes = [];
+    disposeMeshes();
     
     const rings = 20;
     const segments = 16;
@@ -895,9 +888,7 @@
   }
 
   function create3DWaves(levels) {
-    // Clear previous meshes to ensure clean state
-    threeMeshes.forEach(mesh => scene.remove(mesh));
-    threeMeshes = [];
+    disposeMeshes();
     
     // Create new geometry and mesh
     const width = Math.max(10, levels.length); // Ensure minimum width
@@ -945,8 +936,7 @@
   }
 
   function create3DCubeMatrix(levels) {
-    threeMeshes.forEach(mesh => scene.remove(mesh));
-    threeMeshes = [];
+    disposeMeshes();
     
     const gridSize = Math.ceil(Math.sqrt(levels.length));
     const spacing = 0.3;
@@ -979,8 +969,7 @@
   }
 
   function create3DSpiral(levels) {
-    threeMeshes.forEach(mesh => scene.remove(mesh));
-    threeMeshes = [];
+    disposeMeshes();
     
     const spiralHeight = 6;
     const spiralRadius = 2;
@@ -1539,7 +1528,10 @@
   };
 
   // Create a backup of built-in themes to handle custom theme overrides
-  const builtInThemes = JSON.parse(JSON.stringify(themes));
+  const builtInThemes = {};
+  for (const key in themes) {
+    builtInThemes[key] = { ...themes[key] };
+  }
 
   function getColorForLevel(t) {
     // Ensure we have a valid theme before accessing its properties
@@ -1960,7 +1952,7 @@
       const minRadius = maxRadius * 0.3;
       
       // Clear canvas with background color
-      ctx.fillStyle = BG_COLOR;
+      ctx.fillStyle = currentThemeObj.bgColor || BG_COLOR;
       ctx.fillRect(0, 0, w, h);
       
       // Draw grid if enabled
@@ -2395,12 +2387,15 @@
   function render(timestamp) {
     if (!analyser) return;
     
+    // Use performance.now() as fallback when called without timestamp
+    const now = timestamp || performance.now();
+    
     // Frame rate limiting
-    if (timestamp - lastRenderTime < frameInterval) {
+    if (now - lastRenderTime < frameInterval) {
       animationId = requestAnimationFrame(render);
       return;
     }
-    lastRenderTime = timestamp;
+    lastRenderTime = now;
     
     analyser.getByteFrequencyData(freqData);
     
@@ -2506,29 +2501,53 @@
     try { eqNodes.output.connect(audioContext.destination); } catch {}
   }
 
+  // Stop current playback and clean up media element
+  function stopCurrentPlayback() {
+    if (mediaElement) {
+      mediaElement.pause();
+      mediaElement.currentTime = 0;
+      // Remove event listeners to prevent old tracks from triggering
+      mediaElement.onended = null;
+      // Revoke blob URLs to free memory
+      if (mediaElement.src && mediaElement.src.startsWith('blob:')) {
+        try { URL.revokeObjectURL(mediaElement.src); } catch {}
+      }
+      mediaElement = null;
+    }
+    if (mediaStream) {
+      try { mediaStream.getTracks().forEach(t => t.stop()); } catch {}
+      mediaStream = null;
+    }
+  }
+
   async function useFile(file) {
     await setupContextIfNeeded();
     stopRendering();
     resetPeaks();
 
-    if (mediaElement) {
-      mediaElement.pause();
-      // Only revoke blob URLs
-      if (mediaElement.src.startsWith('blob:')) {
-        URL.revokeObjectURL(mediaElement.src);
-      }
-    }
+    // Stop any currently playing track first
+    stopCurrentPlayback();
+
     mediaElement = new Audio();
     const objectUrl = URL.createObjectURL(file);
     mediaElement.src = objectUrl;
     mediaElement.crossOrigin = 'anonymous';
-    mediaElement.loop = true;
+    mediaElement.loop = false;
 
     const trackNode = audioContext.createMediaElementSource(mediaElement);
     connectSource(trackNode);
 
+    // Auto-advance to next track when current ends
+    mediaElement.onended = () => {
+      const nextIdx = getNextTrackIndex();
+      if (nextIdx >= 0 && nextIdx < playlist.length) {
+        playFromPlaylist(nextIdx);
+      }
+    };
+
     playBtn.disabled = false;
     pauseBtn.disabled = false;
+    stopDemoBeats();
     await mediaElement.play().catch(() => {});
     addToPlaylist({ title: file.name, url: objectUrl, file: file, isBlob: true });
     render();
@@ -2539,19 +2558,13 @@
     stopRendering();
     resetPeaks();
 
-    if (mediaElement) {
-      mediaElement.pause();
-      // Only revoke blob URLs
-      try { 
-        if (mediaElement.src.startsWith('blob:')) {
-          URL.revokeObjectURL(mediaElement.src); 
-        }
-      } catch {}
-    }
+    // Stop any currently playing track first
+    stopCurrentPlayback();
+
     mediaElement = new Audio();
     mediaElement.src = url;
     mediaElement.crossOrigin = 'anonymous';
-    mediaElement.loop = true;
+    mediaElement.loop = false;
 
     const trackNode = audioContext.createMediaElementSource(mediaElement);
     connectSource(trackNode);
@@ -2568,22 +2581,24 @@
     stopRendering();
     resetPeaks();
 
-    if (mediaElement) {
-      mediaElement.pause();
-      // Only revoke object URLs, not regular URLs
-      try { 
-        if (mediaElement.src.startsWith('blob:')) {
-          URL.revokeObjectURL(mediaElement.src); 
-        }
-      } catch {}
-    }
+    // Stop any currently playing track first
+    stopCurrentPlayback();
+
     mediaElement = new Audio();
     mediaElement.src = url;
     mediaElement.crossOrigin = 'anonymous';
-    mediaElement.loop = true;
+    mediaElement.loop = false;
 
     const trackNode = audioContext.createMediaElementSource(mediaElement);
     connectSource(trackNode);
+
+    // Auto-advance to next track when current ends
+    mediaElement.onended = () => {
+      const nextIdx = getNextTrackIndex();
+      if (nextIdx >= 0 && nextIdx < playlist.length) {
+        playFromPlaylist(nextIdx);
+      }
+    };
 
     playBtn.disabled = false;
     pauseBtn.disabled = false;
@@ -2622,8 +2637,24 @@
 
   // Event Handlers
   fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (file) useFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    await setupContextIfNeeded();
+    
+    // Add all files to playlist
+    for (const file of files) {
+      const objectUrl = URL.createObjectURL(file);
+      addToPlaylist({ title: file.name, url: objectUrl, file: file, isBlob: true });
+    }
+    
+    // Play the first file that wasn't already in playlist
+    if (currentTrackIndex >= 0 && playlist[currentTrackIndex]) {
+      await playFromPlaylist(currentTrackIndex);
+    }
+    
+    // Reset file input so same files can be selected again
+    fileInput.value = '';
   });
 
   micBtn.addEventListener('click', () => {
@@ -2670,6 +2701,7 @@
     }
     playlist.push(item);
     currentTrackIndex = playlist.length - 1;
+    updateShuffleOrder();
     renderPlaylist();
   }
 
@@ -2686,6 +2718,11 @@
       });
       playlistEl.appendChild(chip);
     });
+    
+    // Update playlist info
+    if (playlistCountEl) {
+      playlistCountEl.textContent = `${playlist.length} track${playlist.length !== 1 ? 's' : ''}`;
+    }
   }
 
   function highlightActiveTrack() {
@@ -2698,34 +2735,50 @@
     if (!item) return;
     currentTrackIndex = idx;
     
+    // Stop any currently playing track first
+    stopCurrentPlayback();
+    
     if (item.isBlob && item.file) {
-      // For blob files, recreate the blob URL
-      if (mediaElement) {
-        mediaElement.pause();
-        // Revoke the old blob URL if it exists
-        if (mediaElement.src.startsWith('blob:')) {
-          try { URL.revokeObjectURL(mediaElement.src); } catch {}
-        }
-      }
+      await setupContextIfNeeded();
+      stopRendering();
+      resetPeaks();
       
       mediaElement = new Audio();
       const objectUrl = URL.createObjectURL(item.file);
       mediaElement.src = objectUrl;
       mediaElement.crossOrigin = 'anonymous';
-      mediaElement.loop = true;
+      mediaElement.loop = false;
 
       const trackNode = audioContext.createMediaElementSource(mediaElement);
       connectSource(trackNode);
 
       playBtn.disabled = false;
       pauseBtn.disabled = false;
+      
+      // Auto-advance to next track when current ends
+      mediaElement.onended = () => {
+        const nextIdx = getNextTrackIndex();
+        if (nextIdx >= 0 && nextIdx < playlist.length) {
+          playFromPlaylist(nextIdx);
+        }
+      };
+      
       await mediaElement.play().catch(() => {});
       render();
     } else {
       // For regular URLs, use the existing function
       await useUrlForPlaylist(item.url);
     }
+    
     highlightActiveTrack();
+    
+    // Update now-playing display
+    if (nowPlayingEl) {
+      nowPlayingEl.textContent = `♪ ${item.title}`;
+    }
+    
+    // Update document title
+    document.title = `${item.title} - Winamp Spectrum`;
   }
 
   playBtn.addEventListener('click', () => {
@@ -2737,6 +2790,109 @@
     if (!mediaElement) return;
     mediaElement.pause();
   });
+
+  // Playlist navigation functions
+  function getNextTrackIndex() {
+    if (playlist.length === 0) return -1;
+    if (repeatMode === 'one') return currentTrackIndex;
+    
+    let nextIdx;
+    if (isShuffled) {
+      const shuffleIdx = shuffleOrder.indexOf(currentTrackIndex);
+      nextIdx = shuffleOrder[(shuffleIdx + 1) % shuffleOrder.length];
+    } else {
+      nextIdx = (currentTrackIndex + 1) % playlist.length;
+    }
+    
+    if (nextIdx === 0 && repeatMode === 'none' && !isShuffled) return -1;
+    if (nextIdx === currentTrackIndex && playlist.length === 1) return -1;
+    return nextIdx;
+  }
+
+  function getPrevTrackIndex() {
+    if (playlist.length === 0) return -1;
+    if (repeatMode === 'one') return currentTrackIndex;
+    
+    if (isShuffled) {
+      const shuffleIdx = shuffleOrder.indexOf(currentTrackIndex);
+      return shuffleOrder[(shuffleIdx - 1 + shuffleOrder.length) % shuffleOrder.length];
+    }
+    return (currentTrackIndex - 1 + playlist.length) % playlist.length;
+  }
+
+  function updateShuffleOrder() {
+    shuffleOrder = Array.from({ length: playlist.length }, (_, i) => i);
+    if (isShuffled) {
+      for (let i = shuffleOrder.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffleOrder[i], shuffleOrder[j]] = [shuffleOrder[j], shuffleOrder[i]];
+      }
+    }
+  }
+
+  async function playNextTrack() {
+    const nextIdx = getNextTrackIndex();
+    if (nextIdx >= 0 && nextIdx < playlist.length) {
+      await playFromPlaylist(nextIdx);
+    }
+  }
+
+  async function playPrevTrack() {
+    const prevIdx = getPrevTrackIndex();
+    if (prevIdx >= 0 && prevIdx < playlist.length) {
+      await playFromPlaylist(prevIdx);
+    }
+  }
+
+  // Wire up playlist control buttons
+  if (prevTrackBtn) {
+    prevTrackBtn.addEventListener('click', playPrevTrack);
+  }
+  if (nextTrackBtn) {
+    nextTrackBtn.addEventListener('click', playNextTrack);
+  }
+  if (shuffleBtn) {
+    shuffleBtn.addEventListener('click', () => {
+      isShuffled = !isShuffled;
+      updateShuffleOrder();
+      const btnText = shuffleBtn.querySelector('.btn-text');
+      if (btnText) btnText.textContent = isShuffled ? 'ON' : 'OFF';
+      shuffleBtn.classList.toggle('active', isShuffled);
+    });
+  }
+  if (repeatBtn) {
+    repeatBtn.addEventListener('click', () => {
+      const modes = ['none', 'one', 'all'];
+      const nextIdx = (modes.indexOf(repeatMode) + 1) % modes.length;
+      repeatMode = modes[nextIdx];
+      const btnText = repeatBtn.querySelector('.btn-text');
+      if (btnText) btnText.textContent = repeatMode === 'none' ? 'OFF' : repeatMode === 'one' ? '1' : 'ALL';
+      repeatBtn.classList.toggle('active', repeatMode !== 'none');
+    });
+  }
+  if (clearPlaylistBtn) {
+    clearPlaylistBtn.addEventListener('click', () => {
+      if (playlist.length === 0) return;
+      if (!confirm('Clear entire playlist?')) return;
+      
+      // Stop current playback
+      if (mediaElement) {
+        mediaElement.pause();
+        if (mediaElement.src.startsWith('blob:')) {
+          try { URL.revokeObjectURL(mediaElement.src); } catch {}
+        }
+        mediaElement = null;
+      }
+      
+      playlist.length = 0;
+      currentTrackIndex = -1;
+      shuffleOrder = [];
+      renderPlaylist();
+      playBtn.disabled = true;
+      pauseBtn.disabled = true;
+      if (nowPlayingEl) nowPlayingEl.textContent = '';
+    });
+  }
 
   function handleToggleRedraw() {
     if (!isRendering()) {
@@ -3451,7 +3607,6 @@
   removeUnwantedThemes(); // Remove unwanted themes before loading
   loadCustomThemes(); // Load saved custom themes
   applyThemePreset(currentTheme);
-  setupKeyboardShortcuts(); // Initialize keyboard shortcuts
   
   // Initialize continuous fireworks if checkbox is already checked
   if (fireworksChk && fireworksChk.checked) {
@@ -3464,47 +3619,6 @@
   
   // Don't start demo beats on load - only start when audio is initialized
   // startDemoBeats();
-  
-  // Keyboard shortcuts
-  function setupKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
-      // Ignore if typing in an input field
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-        return;
-      }
-      
-      switch (e.key) {
-        case ' ': // Spacebar - Play/Pause
-          e.preventDefault();
-          if (mediaElement) {
-            if (mediaElement.paused) {
-              mediaElement.play();
-            } else {
-              mediaElement.pause();
-            }
-          }
-          break;
-        case 'ArrowRight': // Next track
-          e.preventDefault();
-          if (playlist.length > 1) {
-            const nextIndex = (currentTrackIndex + 1) % playlist.length;
-            playFromPlaylist(nextIndex);
-          }
-          break;
-        case 'ArrowLeft': // Previous track
-          e.preventDefault();
-          if (playlist.length > 1) {
-            const prevIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
-            playFromPlaylist(prevIndex);
-          }
-          break;
-        case 'f': // F key - Toggle fullscreen
-          e.preventDefault();
-          toggleFullscreen();
-          break;
-      }
-    });
-  }
   
   // Fullscreen mode
   function toggleFullscreen() {
@@ -3574,16 +3688,8 @@
       fireworksInterval = null;
     }
     
-    // Pause and cleanup media
-    if (mediaElement) {
-      mediaElement.pause();
-      try {
-        URL.revokeObjectURL(mediaElement.src);
-      } catch (e) {
-        // Ignore errors during cleanup
-      }
-      mediaElement = null;
-    }
+    // Stop and cleanup media
+    stopCurrentPlayback();
     
     // Disconnect audio nodes
     try {

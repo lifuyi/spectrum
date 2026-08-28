@@ -149,6 +149,14 @@ class AudioManager {
       this.mediaElement.pause();
       this.mediaElement.currentTime = 0;
     }
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream = null;
+      if (this.sourceNode) {
+        this.sourceNode.disconnect();
+        this.sourceNode = null;
+      }
+    }
   }
 
   isPlaying() {

@@ -196,7 +196,7 @@ class PlaylistManager {
     this.playlistElement.innerHTML = '';
 
     if (this.tracks.length === 0) {
-      this.playlistElement.innerHTML = '<div class="playlist-empty">No tracks in playlist</div>';
+      this.playlistElement.innerHTML = '<div class="playlist-empty">No tracks in playlist<br><small>Drag & drop audio files here or use the Load Audio button</small></div>';
       return;
     }
 
@@ -204,12 +204,18 @@ class PlaylistManager {
       const trackElement = document.createElement('div');
       trackElement.className = `playlist-item ${index === this.currentIndex ? 'active' : ''}`;
       trackElement.dataset.index = index;
+      trackElement.draggable = true;
+
+      const duration = this.formatDuration(track.duration || 0);
+      const trackNumber = (index + 1).toString().padStart(2, '0');
 
       trackElement.innerHTML = `
+        <div class="track-number">${trackNumber}</div>
         <div class="track-info">
-          <div class="track-name">${this.escapeHtml(track.name)}</div>
-          <div class="track-details">${this.escapeHtml(track.artist)} - ${this.escapeHtml(track.album)}</div>
+          <div class="track-name" title="${this.escapeHtml(track.name)}">${this.escapeHtml(track.name)}</div>
+          <div class="track-details" title="${this.escapeHtml(track.artist)} - ${this.escapeHtml(track.album)}">${this.escapeHtml(track.artist)} - ${this.escapeHtml(track.album)}</div>
         </div>
+        <div class="track-duration">${duration}</div>
         <div class="track-controls">
           <button class="track-play-btn" title="Play">▶</button>
           <button class="track-remove-btn" title="Remove">×</button>
@@ -231,8 +237,38 @@ class PlaylistManager {
         this.playTrack(index);
       });
 
+      // Drag and drop for reordering
+      trackElement.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', index);
+        trackElement.classList.add('dragging');
+      });
+
+      trackElement.addEventListener('dragend', () => {
+        trackElement.classList.remove('dragging');
+      });
+
+      trackElement.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        trackElement.classList.add('drag-over');
+      });
+
+      trackElement.addEventListener('dragleave', () => {
+        trackElement.classList.remove('drag-over');
+      });
+
+      trackElement.addEventListener('drop', (e) => {
+        e.preventDefault();
+        trackElement.classList.remove('drag-over');
+        const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+        if (draggedIndex !== index) {
+          this.moveTrack(draggedIndex, index);
+        }
+      });
+
       this.playlistElement.appendChild(trackElement);
     });
+
+    this.updatePlaylistInfo();
   }
 
   showTrackError(index, message) {
@@ -267,8 +303,137 @@ class PlaylistManager {
       currentIndex: this.currentIndex,
       isShuffled: this.isShuffled,
       repeatMode: this.isRepeating,
-      currentTrack: this.getCurrentTrack()
+      currentTrack: this.getCurrentTrack(),
+      totalDuration: this.getTotalDuration()
     };
+  }
+
+  formatDuration(seconds) {
+    if (!seconds || seconds === 0) return '--:--';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  getTotalDuration() {
+    return this.tracks.reduce((total, track) => total + (track.duration || 0), 0);
+  }
+
+  updatePlaylistInfo() {
+    const countElement = document.getElementById('playlist-count');
+    const durationElement = document.getElementById('playlist-duration');
+    
+    if (countElement) {
+      countElement.textContent = `${this.tracks.length} track${this.tracks.length !== 1 ? 's' : ''}`;
+    }
+    
+    if (durationElement) {
+      const totalDuration = this.getTotalDuration();
+      const hours = Math.floor(totalDuration / 3600);
+      const mins = Math.floor((totalDuration % 3600) / 60);
+      const secs = Math.floor(totalDuration % 60);
+      
+      if (hours > 0) {
+        durationElement.textContent = `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      } else {
+        durationElement.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+      }
+    }
+  }
+
+  moveTrack(fromIndex, toIndex) {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || 
+        fromIndex >= this.tracks.length || toIndex >= this.tracks.length) {
+      return false;
+    }
+
+    const track = this.tracks.splice(fromIndex, 1)[0];
+    this.tracks.splice(toIndex, 0, track);
+
+    // Update current index if necessary
+    if (this.currentIndex === fromIndex) {
+      this.currentIndex = toIndex;
+    } else if (fromIndex < this.currentIndex && toIndex >= this.currentIndex) {
+      this.currentIndex--;
+    } else if (fromIndex > this.currentIndex && toIndex <= this.currentIndex) {
+      this.currentIndex++;
+    }
+
+    this.updateShuffleOrder();
+    this.renderPlaylist();
+    
+    if (this.callbacks.onPlaylistUpdate) {
+      this.callbacks.onPlaylistUpdate(this.tracks);
+    }
+
+    return true;
+  }
+
+  searchTracks(query) {
+    if (!query || query.trim() === '') {
+      this.renderPlaylist();
+      return;
+    }
+
+    const searchTerm = query.toLowerCase().trim();
+    const filteredTracks = this.tracks.filter((track, index) => {
+      return track.name.toLowerCase().includes(searchTerm) ||
+             track.artist.toLowerCase().includes(searchTerm) ||
+             track.album.toLowerCase().includes(searchTerm);
+    });
+
+    this.renderFilteredPlaylist(filteredTracks);
+  }
+
+  renderFilteredPlaylist(filteredTracks) {
+    if (!this.playlistElement) return;
+
+    this.playlistElement.innerHTML = '';
+
+    if (filteredTracks.length === 0) {
+      this.playlistElement.innerHTML = '<div class="playlist-empty">No tracks match your search</div>';
+      return;
+    }
+
+    filteredTracks.forEach((track) => {
+      const originalIndex = this.tracks.indexOf(track);
+      const trackElement = document.createElement('div');
+      trackElement.className = `playlist-item ${originalIndex === this.currentIndex ? 'active' : ''}`;
+      trackElement.dataset.index = originalIndex;
+
+      const duration = this.formatDuration(track.duration || 0);
+      const trackNumber = (originalIndex + 1).toString().padStart(2, '0');
+
+      trackElement.innerHTML = `
+        <div class="track-number">${trackNumber}</div>
+        <div class="track-info">
+          <div class="track-name" title="${this.escapeHtml(track.name)}">${this.escapeHtml(track.name)}</div>
+          <div class="track-details" title="${this.escapeHtml(track.artist)} - ${this.escapeHtml(track.album)}">${this.escapeHtml(track.artist)} - ${this.escapeHtml(track.album)}</div>
+        </div>
+        <div class="track-duration">${duration}</div>
+        <div class="track-controls">
+          <button class="track-play-btn" title="Play">▶</button>
+          <button class="track-remove-btn" title="Remove">×</button>
+        </div>
+      `;
+
+      // Add event listeners
+      trackElement.querySelector('.track-play-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.playTrack(originalIndex);
+      });
+
+      trackElement.querySelector('.track-remove-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.removeTrack(track.id);
+      });
+
+      trackElement.addEventListener('dblclick', () => {
+        this.playTrack(originalIndex);
+      });
+
+      this.playlistElement.appendChild(trackElement);
+    });
   }
 
   // Save/Load playlist to/from localStorage

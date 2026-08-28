@@ -56,7 +56,6 @@ async function initializeEnhancedVisualizer() {
     
     // Set up enhanced controls
     setupEnhancedControls();
-    setupKeyboardShortcuts();
     setupPerformanceMonitoring();
     
     // Mobile support
@@ -96,8 +95,8 @@ function setupPlaylistControls() {
   if (shuffleBtn) {
     shuffleBtn.addEventListener('click', () => {
       const isShuffled = playlistManager.toggleShuffle();
-      shuffleBtn.textContent = isShuffled ? 'Shuffle: ON' : 'Shuffle: OFF';
-      shuffleBtn.style.background = isShuffled ? '#2a2a2a' : '#1a1a1a';
+      shuffleBtn.querySelector('.btn-text').textContent = isShuffled ? 'Shuffle: ON' : 'Shuffle: OFF';
+      shuffleBtn.classList.toggle('active', isShuffled);
     });
   }
   
@@ -111,7 +110,24 @@ function setupPlaylistControls() {
       const nextMode = modes[(currentIndex + 1) % modes.length];
       
       playlistManager.setRepeatMode(nextMode);
-      repeatBtn.textContent = `Repeat: ${nextMode.toUpperCase()}`;
+      repeatBtn.querySelector('.btn-text').textContent = `Repeat: ${nextMode.toUpperCase()}`;
+      repeatBtn.classList.toggle('active', nextMode !== 'none');
+    });
+  }
+  
+  // Previous track button
+  const prevBtn = document.getElementById('prev-track');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      playlistManager.playPrevious();
+    });
+  }
+  
+  // Next track button
+  const nextBtn = document.getElementById('next-track');
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      playlistManager.playNext();
     });
   }
   
@@ -155,30 +171,60 @@ function setupPlaylistControls() {
       }
     });
   }
-}
-
-// Enhanced controls setup
-function setupEnhancedControls() {
-  // Volume control
-  const volumeSlider = document.getElementById('volume-slider');
-  const volumeValue = document.getElementById('volume-value');
   
-  if (volumeSlider && volumeValue) {
-    volumeSlider.addEventListener('input', (e) => {
-      const volume = e.target.value / 100;
-      audioManager.setVolume(volume);
-      volumeValue.textContent = e.target.value + '%';
+  // Search functionality
+  const searchInput = document.getElementById('playlist-search');
+  const searchClear = document.getElementById('search-clear');
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      playlistManager.searchTracks(e.target.value);
+    });
+    
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        searchInput.value = '';
+        playlistManager.searchTracks('');
+      }
     });
   }
   
-  // Enhanced file loading with validation
-  const fileInput = document.getElementById('file');
-  if (fileInput) {
-    fileInput.addEventListener('change', async (e) => {
-      const files = Array.from(e.target.files);
-      // Stop current playback before loading new files
-      if (audioManager.isPlaying()) {
-        audioManager.stop();
+  if (searchClear) {
+    searchClear.addEventListener('click', () => {
+      if (searchInput) {
+        searchInput.value = '';
+        playlistManager.searchTracks('');
+        searchInput.focus();
+      }
+    });
+  }
+  
+  // Drag and drop for files
+  const playlistElement = document.getElementById('playlist');
+  if (playlistElement) {
+    playlistElement.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      playlistElement.classList.add('drag-over');
+    });
+    
+    playlistElement.addEventListener('dragleave', (e) => {
+      if (!playlistElement.contains(e.relatedTarget)) {
+        playlistElement.classList.remove('drag-over');
+      }
+    });
+    
+    playlistElement.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      playlistElement.classList.remove('drag-over');
+      
+      const files = Array.from(e.dataTransfer.files).filter(file => 
+        file.type.startsWith('audio/') || 
+        /\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(file.name)
+      );
+      
+      if (files.length === 0) {
+        showErrorMessage('No valid audio files found');
+        return;
       }
       
       for (const file of files) {
@@ -194,293 +240,116 @@ function setupEnhancedControls() {
         }
       }
       
-      // Auto-play the last added track
-      if (files.length > 0) {
-        const trackIndex = playlistManager.getTracks().length - 1;
-        await playlistManager.playTrack(trackIndex);
-      }
+      showSuccessMessage(`Added ${files.length} track${files.length !== 1 ? 's' : ''} to playlist`);
     });
   }
-  
-  // Enhanced URL loading
-  const urlBtn = document.getElementById('url');
-  if (urlBtn) {
-    urlBtn.addEventListener('click', async () => {
-      const url = prompt('Enter audio URL:');
-      if (url) {
-        try {
-          // Stop current playback before loading new URL
-          if (audioManager.isPlaying()) {
-            audioManager.stop();
-          }
-          
-          playlistManager.addTrack({
-            name: extractFilenameFromURL(url),
-            url: url,
-            artist: 'Unknown Artist',
-            album: 'Unknown Album'
-          });
-          
-          // Auto-play the new track
-          const trackIndex = playlistManager.getTracks().length - 1;
-          await playlistManager.playTrack(trackIndex);
-        } catch (error) {
-          showErrorMessage(`Failed to load URL: ${error.message}`);
-        }
-      }
-    });
-  }
-  
-  // Enhanced microphone support
-  const micBtn = document.getElementById('mic');
-  if (micBtn) {
-    micBtn.addEventListener('click', async () => {
-      try {
-        await audioManager.loadFromMicrophone();
-        showSuccessMessage('Microphone connected successfully');
-      } catch (error) {
-        showErrorMessage(`Microphone error: ${error.message}`);
-      }
-    });
-  }
-  
-  // Enhanced playlist controls
-  setupPlaylistControls();
-  
-  // Enhanced play/pause with playlist support
-  const playBtn = document.getElementById('play');
-  const pauseBtn = document.getElementById('pause');
-  
-  if (playBtn) {
-    playBtn.addEventListener('click', async () => {
-      if (playlistManager.getCurrentTrack()) {
-        await audioManager.play();
-      } else if (playlistManager.getTracks().length > 0) {
-        await playlistManager.playTrack(0);
-      }
-    });
-  }
-  
-  if (pauseBtn) {
-    pauseBtn.addEventListener('click', () => {
-      audioManager.pause();
-    });
-  }
-  
-  // Low power mode toggle
-  const lowPowerChk = document.getElementById('low-power');
-  if (lowPowerChk) {
-    lowPowerChk.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        performanceManager.enableLowPowerMode();
-        document.body.classList.add('low-power-mode');
-      } else {
-        performanceManager.disableLowPowerMode();
-        document.body.classList.remove('low-power-mode');
-      }
-    });
-  }
-  
-  // Music theory toggle
-  setTimeout(() => {
-    const musicTheoryToggle = document.getElementById('music-theory-toggle');
-    const musicTheoryPanel = document.getElementById('music-theory-panel');
-    if (musicTheoryToggle && musicTheoryPanel) {
-      // Set initial state based on checkbox
-      musicTheoryPanel.style.display = musicTheoryToggle.checked ? 'block' : 'none';
-      
-      musicTheoryToggle.addEventListener('change', (e) => {
-        if (e.target.checked) {
-          musicTheoryPanel.style.display = 'block';
-          if (musicTheoryAnalyzer) {
-            musicTheoryAnalyzer.startAnalysis();
-          }
-        } else {
-          musicTheoryPanel.style.display = 'none';
-          if (musicTheoryAnalyzer) {
-            musicTheoryAnalyzer.stopAnalysis();
-          }
-        }
-      });
-    }
-  }, 100);
-  
-  // BPM toggle
-  setTimeout(() => {
-    const bpmToggle = document.getElementById('bpm-toggle');
-    const bpmPanel = document.getElementById('bpm-panel');
-    if (bpmToggle && bpmPanel) {
-      // Set initial state based on checkbox
-      bpmPanel.style.display = bpmToggle.checked ? 'block' : 'none';
-      
-      bpmToggle.addEventListener('change', (e) => {
-        if (e.target.checked) {
-          bpmPanel.style.display = 'block';
-          if (bpmDetector) {
-            console.log('Starting BPM analysis...');
-            bpmDetector.startAnalysis();
-          }
-        } else {
-          bpmPanel.style.display = 'none';
-          if (bpmDetector) {
-            console.log('Stopping BPM analysis...');
-            bpmDetector.stopAnalysis();
-          }
-        }
-      });
-      
-      // Auto-start BPM analysis if checkbox is already checked
-      if (bpmToggle.checked && bpmDetector) {
-        console.log('Auto-starting BPM analysis (checkbox was checked)...');
-        bpmDetector.startAnalysis();
-      }
-    }
-  }, 100);
-  
-  // Spectrum toggle
-  setTimeout(() => {
-    const spectrumToggle = document.getElementById('spectrum-toggle');
-    const spectrumPanel = document.getElementById('spectrum-panel');
-    if (spectrumToggle && spectrumPanel) {
-      // Set initial state based on checkbox
-      spectrumPanel.style.display = spectrumToggle.checked ? 'block' : 'none';
-      
-      spectrumToggle.addEventListener('change', (e) => {
-        if (e.target.checked) {
-          spectrumPanel.style.display = 'block';
-        } else {
-          spectrumPanel.style.display = 'none';
-        }
-      });
-    }
-  }, 100);
-  
-  // Set up confidence threshold sliders
-  setTimeout(() => {
-    const keyConfidenceSlider = document.getElementById('key-confidence-threshold');
-    const chordConfidenceSlider = document.getElementById('chord-confidence-threshold');
-    const keyConfidenceValue = document.getElementById('key-confidence-value');
-    const chordConfidenceValue = document.getElementById('chord-confidence-value');
-    
-    if (keyConfidenceSlider && keyConfidenceValue) {
-      keyConfidenceSlider.addEventListener('input', (e) => {
-        const value = parseFloat(e.target.value);
-        if (musicTheoryAnalyzer) {
-          musicTheoryAnalyzer.keyConfidenceThreshold = value;
-        }
-        keyConfidenceValue.textContent = Math.round(value * 100) + '%';
-      });
-    }
-    
-    if (chordConfidenceSlider && chordConfidenceValue) {
-      // Set initial value to match the analyzer's default
-      if (musicTheoryAnalyzer) {
-        chordConfidenceSlider.value = musicTheoryAnalyzer.chordConfidenceThreshold;
-        chordConfidenceValue.textContent = Math.round(musicTheoryAnalyzer.chordConfidenceThreshold * 100) + '%';
-      }
-      
-      chordConfidenceSlider.addEventListener('input', (e) => {
-        const value = parseFloat(e.target.value);
-        if (musicTheoryAnalyzer) {
-          musicTheoryAnalyzer.chordConfidenceThreshold = value;
-        }
-        chordConfidenceValue.textContent = Math.round(value * 100) + '%';
-      });
-    }
-    
-    // Set up BPM sensitivity slider
-    const bpmSensitivitySlider = document.getElementById('bpm-sensitivity');
-    const bpmSensitivityValue = document.getElementById('bpm-sensitivity-value');
-    if (bpmSensitivitySlider && bpmDetector) {
-      bpmSensitivitySlider.addEventListener('input', (e) => {
-        const value = parseFloat(e.target.value);
-        bpmDetector.peakThreshold = value;
-        if (bpmSensitivityValue) {
-          bpmSensitivityValue.textContent = Math.round(value * 100) + '%';
-        }
-      });
-    }
-  }, 100);
 }
 
-// Enhanced keyboard shortcuts
-function setupKeyboardShortcuts() {
-  document.addEventListener('keydown', (e) => {
-    // Don't trigger shortcuts when typing in inputs
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-      return;
+// Enhanced controls setup
+function setupEnhancedControls() {
+  // Volume control
+  const volumeSlider = document.getElementById('volume-slider');
+  const volumeValue = document.getElementById('volume-value');
+  
+  if (volumeSlider && volumeValue) {
+    volumeSlider.addEventListener('input', (e) => {
+      const volume = e.target.value / 100;
+      audioManager.setVolume(volume);
+      volumeValue.textContent = e.target.value + '%';
+    });
+  }
+
+  // BPM toggle
+  const bpmToggle = document.getElementById('bpm-toggle');
+  const bpmPanel = document.getElementById('bpm-panel');
+  if (bpmToggle && bpmPanel) {
+    bpmPanel.style.display = bpmToggle.checked ? 'block' : 'none';
+
+    bpmToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        bpmPanel.style.display = 'block';
+        if (bpmDetector) bpmDetector.startAnalysis();
+      } else {
+        bpmPanel.style.display = 'none';
+        if (bpmDetector) bpmDetector.stopAnalysis();
+      }
+    });
+
+    if (bpmToggle.checked && bpmDetector) {
+      bpmDetector.startAnalysis();
     }
-    
-    switch (e.key) {
-      case ' ':
-        e.preventDefault();
-        if (audioManager.isPlaying()) {
-          audioManager.pause();
-        } else {
-          audioManager.play();
-        }
-        break;
-        
-      case 'ArrowLeft':
-        e.preventDefault();
-        playlistManager.playPrevious();
-        break;
-        
-      case 'ArrowRight':
-        e.preventDefault();
-        playlistManager.playNext();
-        break;
-        
-      case 'ArrowUp':
-        e.preventDefault();
-        adjustVolume(0.1);
-        break;
-        
-      case 'ArrowDown':
-        e.preventDefault();
-        adjustVolume(-0.1);
-        break;
-        
-      case 'f':
-      case 'F':
-        e.preventDefault();
-        toggleFullscreen();
-        break;
-        
-      case 'm':
-      case 'M':
-        e.preventDefault();
-        toggleMute();
-        break;
-        
-      case 's':
-      case 'S':
-        e.preventDefault();
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          takeScreenshot();
-        } else {
-          playlistManager.toggleShuffle();
-        }
-        break;
-        
-      case 'r':
-      case 'R':
-        e.preventDefault();
-        cycleRepeatMode();
-        break;
-        
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
-        e.preventDefault();
-        const themeIndex = parseInt(e.key) - 1;
-        switchToThemeByIndex(themeIndex);
-        break;
+  }
+
+  // Music theory toggle
+  const musicTheoryToggle = document.getElementById('music-theory-toggle');
+  const musicTheoryPanel = document.getElementById('music-theory-panel');
+  if (musicTheoryToggle && musicTheoryPanel) {
+    musicTheoryPanel.style.display = musicTheoryToggle.checked ? 'block' : 'none';
+
+    musicTheoryToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        musicTheoryPanel.style.display = 'block';
+        if (musicTheoryAnalyzer) musicTheoryAnalyzer.startAnalysis();
+      } else {
+        musicTheoryPanel.style.display = 'none';
+        if (musicTheoryAnalyzer) musicTheoryAnalyzer.stopAnalysis();
+      }
+    });
+
+    if (musicTheoryToggle.checked && musicTheoryAnalyzer) {
+      musicTheoryAnalyzer.startAnalysis();
     }
-  });
+  }
+
+  // Spectrum toggle
+  const spectrumToggle = document.getElementById('spectrum-toggle');
+  const spectrumPanel = document.getElementById('spectrum-panel');
+  if (spectrumToggle && spectrumPanel) {
+    spectrumPanel.style.display = spectrumToggle.checked ? 'block' : 'none';
+
+    spectrumToggle.addEventListener('change', (e) => {
+      spectrumPanel.style.display = e.target.checked ? 'block' : 'none';
+    });
+  }
+
+  // Key confidence threshold
+  const keyConfidenceSlider = document.getElementById('key-confidence-threshold');
+  const keyConfidenceValue = document.getElementById('key-confidence-value');
+  if (keyConfidenceSlider && keyConfidenceValue) {
+    keyConfidenceSlider.addEventListener('input', (e) => {
+      const value = parseFloat(e.target.value);
+      if (musicTheoryAnalyzer) musicTheoryAnalyzer.keyConfidenceThreshold = value;
+      keyConfidenceValue.textContent = Math.round(value * 100) + '%';
+    });
+  }
+
+  // Chord confidence threshold
+  const chordConfidenceSlider = document.getElementById('chord-confidence-threshold');
+  const chordConfidenceValue = document.getElementById('chord-confidence-value');
+  if (chordConfidenceSlider && chordConfidenceValue) {
+    if (musicTheoryAnalyzer) {
+      chordConfidenceSlider.value = musicTheoryAnalyzer.chordConfidenceThreshold;
+      chordConfidenceValue.textContent = Math.round(musicTheoryAnalyzer.chordConfidenceThreshold * 100) + '%';
+    }
+    chordConfidenceSlider.addEventListener('input', (e) => {
+      const value = parseFloat(e.target.value);
+      if (musicTheoryAnalyzer) musicTheoryAnalyzer.chordConfidenceThreshold = value;
+      chordConfidenceValue.textContent = Math.round(value * 100) + '%';
+    });
+  }
+
+  // BPM sensitivity slider
+  const bpmSensitivitySlider = document.getElementById('bpm-sensitivity');
+  const bpmSensitivityValue = document.getElementById('bpm-sensitivity-value');
+  if (bpmSensitivitySlider && bpmDetector) {
+    bpmSensitivitySlider.addEventListener('input', (e) => {
+      const value = parseFloat(e.target.value);
+      bpmDetector.peakThreshold = value;
+      if (bpmSensitivityValue) {
+        bpmSensitivityValue.textContent = Math.round(value * 100) + '%';
+      }
+    });
+  }
 }
 
 // Performance monitoring
@@ -582,8 +451,15 @@ function updateNowPlaying(track) {
   // Update any now-playing displays
   const nowPlayingElements = document.querySelectorAll('.now-playing');
   nowPlayingElements.forEach(el => {
-    el.textContent = `${track.artist} - ${track.name}`;
+    el.textContent = `♪ ${track.artist} - ${track.name}`;
   });
+  
+  // Update now playing info in playlist
+  const nowPlayingInfo = document.getElementById('now-playing-info');
+  if (nowPlayingInfo) {
+    nowPlayingInfo.textContent = `♪ ${track.artist} - ${track.name}`;
+    nowPlayingInfo.title = `Currently playing: ${track.name} by ${track.artist}`;
+  }
 }
 
 // Message system
@@ -805,7 +681,6 @@ function setupBPMCallbacks() {
   
   bpmDetector.setCallbacks({
     onBPMDetected: function(data) {
-      console.log('BPM detected:', data.bpm, 'confidence:', data.confidence);
       const bpmDisplay = document.getElementById('bpm-display');
       const confidenceDisplay = document.getElementById('bpm-confidence');
       const tempoDescription = document.getElementById('tempo-description');

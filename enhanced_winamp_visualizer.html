@@ -14,14 +14,6 @@
 
   <header>
     <h1>Enhanced Winamp Spectrum</h1>
-    <label class="file btn">
-      Load audio
-      <input id="file" type="file" accept="audio/*" multiple />
-    </label>
-    <button id="url" class="btn">Load URL</button>
-    <button id="mic" class="btn">Use mic</button>
-    <button id="play" class="btn" disabled>Play</button>
-    <button id="pause" class="btn" disabled>Pause</button>
     <div class="toggles">
       <label>Style
         <select id="style">
@@ -73,14 +65,14 @@
       <label><input id="grid" type="checkbox" checked> Grid</label>
       <label><input id="bars" type="checkbox" checked> Bars</label>
       <label><input id="peaks" type="checkbox" checked> Peaks</label>
-      <label><input id="shake" type="checkbox"> Shake Mode</label>
-      <label><input id="flash" type="checkbox"> Beat Flash</label>
-      <label><input id="zoom" type="checkbox"> Beat Zoom</label>
-      <label><input id="particles-effect" type="checkbox"> Particle Burst</label>
-      <label><input id="particle-trails" type="checkbox"> Particle Trails</label>
-      <label><input id="particle-fountain" type="checkbox"> Particle Fountain</label>
+      <label><input id="shake" type="checkbox"> Shake</label>
+      <label><input id="flash" type="checkbox"> Flash</label>
+      <label><input id="zoom" type="checkbox"> Zoom</label>
+      <label><input id="particles-effect" type="checkbox"> Particles</label>
+      <label><input id="particle-trails" type="checkbox"> Trails</label>
+      <label><input id="particle-fountain" type="checkbox"> Fountain</label>
       <label><input id="fireworks" type="checkbox"> Fireworks</label>
-      <label><input id="camera-movement" type="checkbox"> 3D Camera Dance</label>
+      <label><input id="camera-movement" type="checkbox"> 3D Dance</label>
       <label><input id="low-power" type="checkbox"> Low Power Mode</label>
       <label>Camera Pattern
         <select id="camera-pattern">
@@ -126,15 +118,41 @@
   <section class="playlist" aria-label="Enhanced Playlist">
     <div class="playlist-header">
       <h3>Playlist</h3>
+      <div class="playlist-search">
+        <input type="text" id="playlist-search" placeholder="Search tracks..." class="search-input">
+        <button id="search-clear" class="btn-small" title="Clear Search">X</button>
+      </div>
       <div class="playlist-controls">
-        <button id="shuffle-btn" class="btn" title="Shuffle">Shuffle</button>
-        <button id="repeat-btn" class="btn" title="Repeat">Repeat</button>
-        <button id="clear-playlist" class="btn" title="Clear Playlist">Clear</button>
-        <button id="save-playlist" class="btn" title="Save Playlist">Save</button>
-        <button id="load-playlist" class="btn" title="Load Playlist">Load</button>
+        <label class="file btn playlist-btn">
+          <span class="btn-icon">📂</span>
+          <input id="file" type="file" accept="audio/*" multiple />
+        </label>
+        <button id="url" class="btn playlist-btn" title="Load URL"><span class="btn-icon">🔗</span></button>
+        <button id="mic" class="btn playlist-btn" title="Use microphone"><span class="btn-icon">🎤</span></button>
+        <span class="playlist-sep"></span>
+        <button id="play" class="btn playlist-btn" disabled title="Play"><span class="btn-icon">▶</span></button>
+        <button id="pause" class="btn playlist-btn" disabled title="Pause"><span class="btn-icon">⏸</span></button>
+        <button id="prev-track" class="btn playlist-btn" title="Previous Track"><span class="btn-icon">⏮</span></button>
+        <button id="next-track" class="btn playlist-btn" title="Next Track"><span class="btn-icon">⏭</span></button>
+        <span class="playlist-sep"></span>
+        <button id="shuffle-btn" class="btn playlist-btn" title="Toggle Shuffle">
+          <span class="btn-icon">🔀</span><span class="btn-text">OFF</span>
+        </button>
+        <button id="repeat-btn" class="btn playlist-btn" title="Cycle Repeat Mode">
+          <span class="btn-icon">🔁</span><span class="btn-text">OFF</span>
+        </button>
+        <span class="playlist-sep"></span>
+        <button id="save-playlist" class="btn playlist-btn" title="Save Playlist"><span class="btn-icon">💾</span></button>
+        <button id="load-playlist" class="btn playlist-btn" title="Load Playlist"><span class="btn-icon">📁</span></button>
+        <button id="clear-playlist" class="btn playlist-btn" title="Clear Playlist"><span class="btn-icon">🗑</span></button>
       </div>
     </div>
-    <div class="playlist-list" id="playlist"></div>
+    <div class="playlist-info">
+      <span id="playlist-count">0 tracks</span>
+      <span id="playlist-duration">0:00</span>
+      <span id="now-playing-info" class="now-playing"></span>
+    </div>
+    <div class="playlist-list" id="playlist" data-drop-zone="true"></div>
   </section>
   
   <main>
@@ -159,8 +177,8 @@
       
       <div class="bpm-controls">
         <label>Peak Sensitivity:
-          <input type="range" id="bpm-sensitivity" min="0.1" max="0.8" step="0.1" value="0.3">
-          <span id="bmp-sensitivity-value">30%</span>
+          <input type="range" id="bpm-sensitivity" min="0.1" max="1.0" step="0.1" value="0.3">
+          <span id="bpm-sensitivity-value">30%</span>
         </label>
       </div>
 
@@ -176,29 +194,6 @@
             <span id="tempo-description">Unknown</span>
           </div>
         </div>
-      </div>
-    </div>
-      <h3>BPM Detection</h3>
-      <div class="bpm-display-container">
-        <div class="bpm-main">
-          <span class="bpm-label">BPM:</span>
-          <span id="bpm-display" class="bpm-value">--</span>
-        </div>
-        <div class="bpm-details">
-          <div class="bpm-confidence">
-            <span>Confidence: </span>
-            <span id="bpm-confidence">--%</span>
-          </div>
-          <div class="tempo-description">
-            <span>Tempo: </span>
-            <span id="tempo-description">Unknown</span>
-          </div>
-        </div>
-      </div>
-      <div class="bpm-controls">
-        <label>Sensitivity:
-          <input type="range" id="bpm-sensitivity" min="0.1" max="1.0" step="0.1" value="0.3">
-        </label>
       </div>
     </div>
 
@@ -386,7 +381,6 @@
   </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="script.js"></script>
 <script src="modules/audio-manager.js"></script>
 <script src="modules/playlist-manager.js"></script>
 <script src="modules/performance-manager.js"></script>
@@ -396,6 +390,7 @@
 <script src="modules/spectrum-analyzer.js"></script>
 <script src="modules/crossfade-manager.js"></script>
 <script src="modules/keyboard-shortcuts.js"></script>
+<script src="script.js"></script>
 <script src="enhanced_script.js"></script>
 </body>
 </html>
